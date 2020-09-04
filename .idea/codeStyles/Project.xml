@@ -1,0 +1,189 @@
+<component name="ProjectCodeStyleConfiguration">
+  <code_scheme name="Project" version="173">
+    <DB2CodeStyleSettings version="1">
+      <option name="myVersion" value="1" />
+      <option name="TABLE_OPENING" value="1" />
+      <option name="TABLE_CONTENT" value="2" />
+      <option name="TABLE_CLOSING" value="3" />
+      <option name="POST_OPT_WRAP_1" value="true" />
+      <option name="IMP_DECLARE_EL_WRAP" value="1" />
+      <option name="IMP_IF_THEN_WRAP_THEN" value="true" />
+      <option name="CORTEGE_CLOSING" value="1" />
+    </DB2CodeStyleSettings>
+    <DerbyCodeStyleSettings version="1">
+      <option name="myVersion" value="1" />
+      <option name="TABLE_OPENING" value="1" />
+      <option name="TABLE_CONTENT" value="2" />
+      <option name="TABLE_CLOSING" value="3" />
+      <option name="POST_OPT_WRAP_1" value="true" />
+      <option name="IMP_DECLARE_EL_WRAP" value="1" />
+      <option name="IMP_IF_THEN_WRAP_THEN" value="true" />
+      <option name="CORTEGE_CLOSING" value="1" />
+    </DerbyCodeStyleSettings>
+    <H2CodeStyleSettings version="1">
+      <option name="myVersion" value="1" />
+      <option name="TABLE_OPENING" value="1" />
+      <option name="TABLE_CONTENT" value="2" />
+      <option name="TABLE_CLOSING" value="3" />
+      <option name="POST_OPT_WRAP_1" value="true" />
+      <option name="IMP_DECLARE_EL_WRAP" value="1" />
+      <option name="IMP_IF_THEN_WRAP_THEN" value="true" />
+      <option name="CORTEGE_CLOSING" value="1" />
+    </H2CodeStyleSettings>
+    <HSQLCodeStyleSettings version="1">
+      <option name="myVersion" value="1" />
+      <option name="TABLE_OPENING" value="1" />
+      <option name="TABLE_CONTENT" value="2" />
+      <option name="TABLE_CLOSING" value="3" />
+      <option name="POST_OPT_WRAP_1" value="true" />
+      <option name="IMP_DECLARE_EL_WRAP" value="1" />
+      <option name="IMP_IF_THEN_WRAP_THEN" value="true" />
+      <option name="CORTEGE_CLOSING" value="1" />
+    </HSQLCodeStyleSettings>
+    <JavaCodeStyleSettings>
+      <option name="DO_NOT_WRAP_AFTER_SINGLE_ANNOTATION" value="true" />
+      <option name="CLASS_COUNT_TO_USE_IMPORT_ON_DEMAND" value="500" />
+      <option name="NAMES_COUNT_TO_USE_IMPORT_ON_DEMAND" value="500" />
+    </JavaCodeStyleSettings>
+    <JetCodeStyleSettings>
+      <option name="PACKAGES_TO_USE_STAR_IMPORTS">
+        <value>
+          <package name="kotlinx.android.synthetic" alias="false" withSubpackages="true" />
+        </value>
+      </option>
+      <option name="PACKAGES_IMPORT_LAYOUT">
+        <value>
+          <package name="" alias="false" withSubpackages="true" />
+          <package name="java" alias="false" withSubpackages="true" />
+          <package name="javax" alias="false" withSubpackages="true" />
+          <package name="kotlin" alias="false" withSubpackages="true" />
+          <package name="" alias="true" withSubpackages="true" />
+        </value>
+      </option>
+      <option name="NAME_COUNT_TO_USE_STAR_IMPORT" value="2147483647" />
+      <option name="NAME_COUNT_TO_USE_STAR_IMPORT_FOR_MEMBERS" value="2147483647" />
+      <option name="CODE_STYLE_DEFAULTS" value="KOTLIN_OFFICIAL" />
+    </JetCodeStyleSettings>
+    <MSSQLCodeStyleSettings version="1">
+      <option name="myVersion" value="1" />
+      <option name="TABLE_OPENING" value="1" />
+      <option name="TABLE_CONTENT" value="2" />
+      <option name="TABLE_CLOSING" value="3" />
+      <option name="POST_OPT_WRAP_1" value="true" />
+      <option name="IMP_DECLARE_EL_WRAP" value="1" />
+      <option name="IMP_IF_THEN_WRAP_THEN" value="true" />
+      <option name="CORTEGE_CLOSING" value="1" />
+    </MSSQLCodeStyleSettings>
+    <MySQLCodeStyleSettings version="1">
+      <option name="myVersion" value="1" />
+      <option name="TABLE_OPENING" value="1" />
+      <option name="TABLE_CONTENT" value="2" />
+      <option name="TABLE_CLOSING" value="3" />
+      <option name="POST_OPT_WRAP_1" value="true" />
+      <option name="IMP_DECLARE_EL_WRAP" value="1" />
+      <option name="IMP_IF_THEN_WRAP_THEN" value="true" />
+      <option name="CORTEGE_CLOSING" value="1" />
+    </MySQLCodeStyleSettings>
+    <OracleCodeStyleSettings version="1">
+      <option name="myVersion" value="1" />
+      <option name="TABLE_OPENING" value="1" />
+      <option name="TABLE_CONTENT" value="2" />
+      <option name="TABLE_CLOSING" value="3" />
+      <option name="POST_OPT_WRAP_1" value="true" />
+      <option name="IMP_DECLARE_EL_WRAP" value="1" />
+      <option name="IMP_IF_THEN_WRAP_THEN" value="true" />
+      <option name="CORTEGE_CLOSING" value="1" />
+    </OracleCodeStyleSettings>
+    <PostgresCodeStyleSettings version="1">
+      <option name="myVersion" value="1" />
+      <option name="TABLE_OPENING" value="1" />
+      <option name="TABLE_CONTENT" value="2" />
+      <option name="TABLE_CLOSING" value="3" />
+      <option name="POST_OPT_WRAP_1" value="true" />
+      <option name="IMP_DECLARE_EL_WRAP" value="1" />
+      <option name="IMP_IF_THEN_WRAP_THEN" value="true" />
+      <option name="CORTEGE_CLOSING" value="1" />
+    </PostgresCodeStyleSettings>
+    <SQLiteCodeStyleSettings version="1">
+      <option name="myVersion" value="1" />
+      <option name="TABLE_OPENING" value="1" />
+      <option name="TABLE_CONTENT" value="2" />
+      <option name="TABLE_CLOSING" value="3" />
+      <option name="POST_OPT_WRAP_1" value="true" />
+      <option name="IMP_DECLARE_EL_WRAP" value="1" />
+      <option name="IMP_IF_THEN_WRAP_THEN" value="true" />
+      <option name="CORTEGE_CLOSING" value="1" />
+    </SQLiteCodeStyleSettings>
+    <SqlCodeStyleSettings version="1">
+      <option name="myVersion" value="1" />
+      <option name="TABLE_OPENING" value="1" />
+      <option name="TABLE_CONTENT" value="2" />
+      <option name="TABLE_CLOSING" value="3" />
+      <option name="POST_OPT_WRAP_1" value="true" />
+      <option name="IMP_DECLARE_EL_WRAP" value="1" />
+      <option name="IMP_IF_THEN_WRAP_THEN" value="true" />
+      <option name="CORTEGE_CLOSING" value="1" />
+    </SqlCodeStyleSettings>
+    <SybaseCodeStyleSettings version="1">
+      <option name="myVersion" value="1" />
+      <option name="TABLE_OPENING" value="1" />
+      <option name="TABLE_CONTENT" value="2" />
+      <option name="TABLE_CLOSING" value="3" />
+      <option name="POST_OPT_WRAP_1" value="true" />
+      <option name="IMP_DECLARE_EL_WRAP" value="1" />
+      <option name="IMP_IF_THEN_WRAP_THEN" value="true" />
+      <option name="CORTEGE_CLOSING" value="1" />
+    </SybaseCodeStyleSettings>
+    <TypeScriptCodeStyleSettings version="0">
+      <option name="FORCE_SEMICOLON_STYLE" value="true" />
+      <option name="SPACES_WITHIN_OBJECT_TYPE_BRACES" value="false" />
+    </TypeScriptCodeStyleSettings>
+    <editorconfig>
+      <option name="ENABLED" value="false" />
+    </editorconfig>
+    <codeStyleSettings language="HTML">
+      <indentOptions>
+        <option name="INDENT_SIZE" value="2" />
+        <option name="CONTINUATION_INDENT_SIZE" value="2" />
+        <option name="TAB_SIZE" value="2" />
+      </indentOptions>
+    </codeStyleSettings>
+    <codeStyleSettings language="JAVA">
+      <option name="METHOD_ANNOTATION_WRAP" value="1" />
+      <option name="FIELD_ANNOTATION_WRAP" value="1" />
+    </codeStyleSettings>
+    <codeStyleSettings language="TypeScript">
+      <option name="RIGHT_MARGIN" value="999" />
+      <option name="METHOD_PARAMETERS_LPAREN_ON_NEXT_LINE" value="true" />
+      <option name="METHOD_PARAMETERS_RPAREN_ON_NEXT_LINE" value="true" />
+      <option name="KEEP_SIMPLE_BLOCKS_IN_ONE_LINE" value="true" />
+      <option name="KEEP_SIMPLE_METHODS_IN_ONE_LINE" value="true" />
+      <indentOptions>
+        <option name="INDENT_SIZE" value="2" />
+        <option name="CONTINUATION_INDENT_SIZE" value="2" />
+        <option name="TAB_SIZE" value="2" />
+      </indentOptions>
+    </codeStyleSettings>
+    <codeStyleSettings language="XML">
+      <indentOptions>
+        <option name="CONTINUATION_INDENT_SIZE" value="4" />
+      </indentOptions>
+    </codeStyleSettings>
+    <codeStyleSettings language="kotlin">
+      <option name="CODE_STYLE_DEFAULTS" value="KOTLIN_OFFICIAL" />
+      <option name="RIGHT_MARGIN" value="999" />
+      <option name="LINE_COMMENT_AT_FIRST_COLUMN" value="false" />
+      <option name="LINE_COMMENT_ADD_SPACE" value="true" />
+      <option name="KEEP_FIRST_COLUMN_COMMENT" value="false" />
+      <option name="KEEP_BLANK_LINES_IN_DECLARATIONS" value="1" />
+      <option name="KEEP_BLANK_LINES_IN_CODE" value="1" />
+      <option name="KEEP_BLANK_LINES_BEFORE_RBRACE" value="0" />
+      <option name="FIELD_ANNOTATION_WRAP" value="1" />
+      <indentOptions>
+        <option name="INDENT_SIZE" value="2" />
+        <option name="CONTINUATION_INDENT_SIZE" value="4" />
+        <option name="TAB_SIZE" value="2" />
+      </indentOptions>
+    </codeStyleSettings>
+  </code_scheme>
+</component>
