@@ -3,8 +3,6 @@ package com.novalang.ast
 abstract class Node(
   open val id: Int
 ) {
-  abstract val children: List<Node>
-
   override fun hashCode(): Int {
     return id
   }

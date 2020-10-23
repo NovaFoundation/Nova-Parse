@@ -28,9 +28,7 @@ class ClassParser(private val dispatcher: Dispatcher) : Reducer() {
 
   private fun addField(state: State, action: AddFieldAction): State {
     val newClass = action.clazz.copy(
-      scope = action.clazz.scope!!.copy(
-        fields = action.clazz.scope.fields + action.field
-      )
+      fields = action.clazz.fields + action.field
     )
 
     return dispatcher.dispatchAndExecute(

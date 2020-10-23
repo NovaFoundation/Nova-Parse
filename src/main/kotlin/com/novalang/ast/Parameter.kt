@@ -6,9 +6,6 @@ data class Parameter(
   val constant: Boolean,
   override val id: Int = counter++
 ) : Node(id) {
-  override val children: List<Node>
-    get() = emptyList()
-
   override fun equals(other: Any?): Boolean {
     return super.equals(other)
   }
