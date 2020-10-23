@@ -108,7 +108,7 @@ class ClassParser(private val dispatcher: Dispatcher) : Reducer() {
         name = classNameToken.value
       )
 
-      tokenData.currentTokens.consumeAllButLast()
+      tokenData.currentTokens.consumeAll()
 
       return dispatcher.dispatchAndExecute(
         state.copy(

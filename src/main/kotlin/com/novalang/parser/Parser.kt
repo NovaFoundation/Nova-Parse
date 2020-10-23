@@ -6,6 +6,7 @@ import com.novalang.parser.actions.EndFileAction
 import com.novalang.parser.actions.InitFileAction
 import com.novalang.parser.actions.ParseAction
 import com.novalang.parser.actions.FileParseAction
+import com.novalang.parser.actions.ScopeParseAction
 import java.io.File
 
 class Parser(
@@ -51,10 +52,10 @@ class Parser(
   }
 
   private fun getParseAction(state: State, tokenData: TokenData): ParseAction {
-    return if (state.currentClass != null) {
-      ClassParseAction(tokenData)
-    } else {
-      FileParseAction(tokenData)
+    return when {
+      state.scopes.size > 1 -> ScopeParseAction(tokenData)
+      state.currentClass != null -> ClassParseAction(tokenData)
+      else -> FileParseAction(tokenData)
     }
   }
 }

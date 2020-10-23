@@ -1,24 +1,24 @@
 package com.novalang.parser.ast
 
 import com.novalang.CompileError
-import com.novalang.ast.Field
+import com.novalang.ast.LocalDeclaration
 import com.novalang.parser.Dispatcher
 import com.novalang.parser.State
 import com.novalang.parser.TokenData
 import com.novalang.parser.TokenType
-import com.novalang.parser.actions.AddFieldAction
-import com.novalang.parser.actions.ClassParseAction
+import com.novalang.parser.actions.AddLocalDeclarationAction
 import com.novalang.parser.actions.DispatcherAction
+import com.novalang.parser.actions.ScopeParseAction
 
-class FieldParser(private val dispatcher: Dispatcher) : Reducer() {
+class LocalDeclarationParser(private val dispatcher: Dispatcher) : Reducer() {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
-      is ClassParseAction -> parseClass(state, action.tokenData)
+      is ScopeParseAction -> parseLocalDeclaration(state, action.tokenData)
       else -> state
     }
   }
 
-  private fun parseClass(state: State, tokenData: TokenData): State {
+  private fun parseLocalDeclaration(state: State, tokenData: TokenData): State {
     return when (tokenData.currentTokens.unconsumed[0].type) {
       TokenType.LET -> parseConstant(state, tokenData)
       TokenType.VAR -> parseVariable(state, tokenData)
@@ -50,7 +50,7 @@ class FieldParser(private val dispatcher: Dispatcher) : Reducer() {
     }
 
     if (tokenData.currentTokens.unconsumed.size == 2) {
-      val field = Field(
+      val localDeclaration = LocalDeclaration(
         name = tokenData.currentTokens.unconsumed[1].value,
         type = null,
         constant = true
@@ -60,10 +60,10 @@ class FieldParser(private val dispatcher: Dispatcher) : Reducer() {
 
       return dispatcher.dispatchAndExecute(
         state,
-        AddFieldAction(
+        AddLocalDeclarationAction(
           file = state.currentFile!!,
           clazz = state.currentClass!!,
-          field = field
+          localDeclaration = localDeclaration
         )
       )
     }
@@ -95,7 +95,7 @@ class FieldParser(private val dispatcher: Dispatcher) : Reducer() {
     }
 
     if (tokenData.currentTokens.unconsumed.size == 2) {
-      val field = Field(
+      val localDeclaration = LocalDeclaration(
         name = tokenData.currentTokens.unconsumed[1].value,
         type = null,
         constant = false
@@ -105,10 +105,10 @@ class FieldParser(private val dispatcher: Dispatcher) : Reducer() {
 
       return dispatcher.dispatchAndExecute(
         state,
-        AddFieldAction(
+        AddLocalDeclarationAction(
           file = state.currentFile!!,
           clazz = state.currentClass!!,
-          field = field
+          localDeclaration = localDeclaration
         )
       )
     }

@@ -2,6 +2,6 @@ class thing {
   let x
 
   aoeu(test, again: number, hey) {
-
+    let y
   }
 }
