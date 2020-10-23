@@ -8,9 +8,11 @@ import com.novalang.parser.State
 import com.novalang.parser.TokenData
 import com.novalang.parser.TokenType
 import com.novalang.parser.actions.AddFunctionAction
+import com.novalang.parser.actions.AddLocalDeclarationAction
 import com.novalang.parser.actions.ClassParseAction
 import com.novalang.parser.actions.FileParseAction
 import com.novalang.parser.actions.ReplaceFunctionAction
+import com.novalang.parser.actions.ReplaceScopeAction
 import com.novalang.parser.actions.ScopeParseAction
 import com.novalang.replace
 
@@ -20,10 +22,45 @@ class ScopeParser(private val dispatcher: Dispatcher) : Reducer() {
       is FileParseAction -> parseFile(state, action.tokenData)
       is ClassParseAction -> parseFile(state, action.tokenData)
       is ScopeParseAction -> parseFile(state, action.tokenData)
+      is AddLocalDeclarationAction -> addLocalDeclaration(state, action)
       is AddFunctionAction -> addFunctionScope(state, action)
       is ReplaceFunctionAction -> replaceFunction(state, action)
+      is ReplaceScopeAction -> replaceScope(state, action)
       else -> state
     }
+  }
+
+  private fun addLocalDeclaration(state: State, action: AddLocalDeclarationAction): State {
+    val lastScopeable = state.scopes.last { it.scope != null }
+    val lastScope = lastScopeable.scope!!
+
+    val newScope = lastScope.copy(
+      localDeclarations = lastScope.localDeclarations + action.localDeclaration
+    )
+
+    return dispatcher.dispatchAndExecute(
+      state,
+      ReplaceScopeAction(
+        file = state.currentFile!!,
+        clazz = state.currentClass!!,
+        scopeable = lastScopeable,
+        oldScope = lastScope,
+        newScope = newScope
+      )
+    )
+  }
+
+  private fun replaceScope(initialState: State, action: ReplaceScopeAction): State {
+    val state = initialState.copy(
+      scopes = initialState.scopes.replace(action.oldScope, action.newScope)
+    )
+
+    val newScopeable = action.scopeable.setScope(action.newScope)
+
+    return dispatcher.dispatchAndExecute(
+      state,
+      replaceNodeAction(state, action.scopeable, newScopeable)
+    )
   }
 
   private fun replaceFunction(state: State, action: ReplaceFunctionAction): State {
