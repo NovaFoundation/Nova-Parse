@@ -6,20 +6,43 @@ import com.novalang.parser.Dispatcher
 import com.novalang.parser.State
 import com.novalang.parser.Token
 import com.novalang.parser.TokenData
+import com.novalang.parser.TokenList
 import com.novalang.parser.TokenType
 import com.novalang.parser.actions.AddFunctionAction
+import com.novalang.parser.actions.AddParameterAction
 import com.novalang.parser.actions.ClassParseAction
 import com.novalang.parser.actions.DispatcherAction
+import com.novalang.parser.actions.ParameterParseAction
+import com.novalang.parser.actions.ReplaceFunctionAction
 
 class FunctionParser(private val dispatcher: Dispatcher) : Reducer() {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is ClassParseAction -> parseClass(state, action.tokenData)
+      is AddParameterAction -> addParameter(state, action)
       else -> state
     }
   }
 
-  private fun parseClass(state: State, tokenData: TokenData): State {
+  private fun addParameter(state: State, action: AddParameterAction): State {
+    val newFunction = action.function.copy(
+      parameters = action.function.parameters + action.parameter
+    )
+
+    return dispatcher.dispatchAndExecute(
+      state,
+      ReplaceFunctionAction(
+        file = action.file,
+        clazz = action.clazz,
+        oldFunction = action.function,
+        newFunction = newFunction
+      )
+    )
+  }
+
+  private fun parseClass(initialState: State, tokenData: TokenData): State {
+    var state = initialState
+
     if (
       tokenData.currentTokens.unconsumed.size > 2 &&
       tokenData.currentTokens.unconsumed[1].type == TokenType.OPENING_PAREN
@@ -40,7 +63,7 @@ class FunctionParser(private val dispatcher: Dispatcher) : Reducer() {
       // opening paren
       tokenData.currentTokens.consumeFirst()
 
-      val tokens = mutableListOf(
+      val parameterTokens = mutableListOf(
         mutableListOf<Token>()
       )
 
@@ -48,9 +71,9 @@ class FunctionParser(private val dispatcher: Dispatcher) : Reducer() {
         if (tokenData.currentTokens.unconsumed.first().type == TokenType.COMMA) {
           tokenData.currentTokens.consumeFirst()
 
-          tokens.add(mutableListOf())
+          parameterTokens.add(mutableListOf())
         } else {
-          tokens.last().add(tokenData.currentTokens.consumeFirst())
+          parameterTokens.last().add(tokenData.currentTokens.consumeFirst())
         }
       }
 
@@ -70,13 +93,29 @@ class FunctionParser(private val dispatcher: Dispatcher) : Reducer() {
 
       val function = Function(name = name)
 
-      dispatcher.dispatch(
+      state = dispatcher.dispatchAndExecute(
+        state,
         AddFunctionAction(
           file = state.currentFile!!,
           clazz = state.currentClass!!,
           function = function
         )
       )
+
+      state = parameterTokens.fold(state) { acc, tokens ->
+        val parameterTokenData = TokenData(
+          currentTokens = TokenList(tokens),
+          source = tokenData.source
+        )
+
+        dispatcher.dispatchAndExecute(
+          acc,
+          ParameterParseAction(
+            tokenData = parameterTokenData,
+            function = acc.currentFunction!!
+          )
+        )
+      }
 
       return state
     }

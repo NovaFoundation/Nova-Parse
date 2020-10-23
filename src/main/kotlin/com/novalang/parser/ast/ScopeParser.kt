@@ -37,16 +37,15 @@ class ScopeParser(private val dispatcher: Dispatcher) : Reducer() {
         scope = scope
       )
 
-      dispatcher.dispatch(
+      return dispatcher.dispatchAndExecute(
+        state.copy(
+          scopes = state.scopes + scope
+        ),
         ReplaceClassAction(
           file = state.currentFile!!,
           oldClass = state.currentClass,
           newClass = newClass
         )
-      )
-
-      return state.copy(
-        scopes = state.scopes + scope
       )
     }
 

@@ -57,15 +57,14 @@ class FieldParser(private val dispatcher: Dispatcher) : Reducer() {
 
       tokenData.currentTokens.consumeAll()
 
-      dispatcher.dispatch(
+      return dispatcher.dispatchAndExecute(
+        state,
         AddFieldAction(
           file = state.currentFile!!,
           clazz = state.currentClass!!,
           field = field
         )
       )
-
-      return state
     }
 
     return state
@@ -102,15 +101,14 @@ class FieldParser(private val dispatcher: Dispatcher) : Reducer() {
 
       tokenData.currentTokens.consumeAll()
 
-      dispatcher.dispatch(
+      return dispatcher.dispatchAndExecute(
+        state,
         AddFieldAction(
           file = state.currentFile!!,
           clazz = state.currentClass!!,
           field = field
         )
       )
-
-      return state
     }
 
     return state

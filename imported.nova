@@ -1,7 +1,7 @@
 class thing {
   let x
 
-  aoeu() {
+  aoeu(test, again: number, hey) {
 
   }
 }

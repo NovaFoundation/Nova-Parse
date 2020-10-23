@@ -16,7 +16,7 @@ class Parser(
       parsedFiles = initialState.parsedFiles + file
     )
 
-    state = dispatcher.dispatchAndExecute(
+    state = dispatcher.dispatchAndExecuteAll(
       state,
       InitFileAction(
         file = file
@@ -32,7 +32,7 @@ class Parser(
     )
 
     state = tokenizer.asSequence().fold(state) { acc, tokenData ->
-      dispatcher.dispatchAndExecute(acc, getParseAction(acc, tokenData))
+      dispatcher.dispatchAndExecuteAll(acc, getParseAction(acc, tokenData))
     }
 
     if (state.scopes.isNotEmpty()) {
@@ -44,7 +44,7 @@ class Parser(
       )
     }
 
-    return dispatcher.dispatchAndExecute(
+    return dispatcher.dispatchAndExecuteAll(
       state,
       EndFileAction()
     )

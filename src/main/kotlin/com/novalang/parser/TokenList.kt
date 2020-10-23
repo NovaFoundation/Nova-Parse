@@ -34,6 +34,10 @@ data class TokenList(
   }
 
   fun isNotConsumed(): Boolean {
-    return unconsumed.isNotEmpty()
+    return !isConsumed()
+  }
+
+  fun isConsumed(): Boolean {
+    return unconsumed.isEmpty()
   }
 }

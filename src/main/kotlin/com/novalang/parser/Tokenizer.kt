@@ -9,6 +9,7 @@ private val SPLITTERS = setOf(
   '-',
   '+',
   '=',
+  ':',
   '(',
   ')',
   '[',
@@ -16,7 +17,7 @@ private val SPLITTERS = setOf(
   '{',
   '}',
   '.',
-  // '"',
+  ',',
 )
 
 class Tokenizer(

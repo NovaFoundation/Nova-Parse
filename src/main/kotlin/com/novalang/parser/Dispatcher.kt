@@ -14,10 +14,16 @@ class Dispatcher {
     pendingActions.add(action)
   }
 
-  fun dispatchAndExecute(state: State, action: DispatcherAction): State {
+  fun dispatchAndExecuteAll(state: State, action: DispatcherAction): State {
     pendingActions.add(action)
 
     return nextAll(state)
+  }
+
+  fun dispatchAndExecute(state: State, action: DispatcherAction): State {
+    pendingActions.add(0, action)
+
+    return next(state)
   }
 
   // fun waitFor(type: Class<DispatcherAction>) {
@@ -34,7 +40,7 @@ class Dispatcher {
   }
 
   fun next(state: State): State {
-    val action = pendingActions.removeLast()
+    val action = pendingActions.removeFirst()
 
     val reducedState = reducers.fold(state) { acc, reducer ->
       if (action !is ParseAction || (action.tokenData.currentTokens.tokens.isEmpty() || action.tokenData.currentTokens.isNotConsumed())) {

@@ -8,6 +8,7 @@ import com.novalang.parser.ast.FileParser
 import com.novalang.parser.ast.ImportParser
 import com.novalang.parser.ast.ClassParser
 import com.novalang.parser.ast.FunctionParser
+import com.novalang.parser.ast.ParameterParser
 import com.novalang.parser.ast.ScopeParser
 import java.io.File
 
@@ -21,6 +22,7 @@ fun main(args: Array<String>) {
     .register(ImportParser(dispatcher))
     .register(ClassParser(dispatcher))
     .register(ScopeParser(dispatcher))
+    .register(ParameterParser(dispatcher))
 
   val parser = Parser(dispatcher)
 

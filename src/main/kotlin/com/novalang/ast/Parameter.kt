@@ -1,8 +1,9 @@
 package com.novalang.ast
 
-data class Function(
+data class Parameter(
   val name: String,
-  val parameters: List<Parameter> = emptyList(),
+  val type: String?,
+  val constant: Boolean,
   override val id: Int = counter++
 ) : Node(id) {
   override val children: List<Node>
