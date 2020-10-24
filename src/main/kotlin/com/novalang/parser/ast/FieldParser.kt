@@ -38,37 +38,9 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    if (tokenData.currentTokens.unconsumed[1].type != TokenType.IDENTIFIER) {
-      tokenData.currentTokens.consumeAll()
+    tokenData.currentTokens.consumeFirst()
 
-      return state.copy(
-        errors = state.errors + CompileError(
-          message = "Invalid constant declaration name",
-          source = tokenData.source
-        )
-      )
-    }
-
-    if (tokenData.currentTokens.unconsumed.size == 2) {
-      val field = Field(
-        name = tokenData.currentTokens.unconsumed[1].value,
-        type = null,
-        constant = true
-      )
-
-      tokenData.currentTokens.consumeAll()
-
-      return dispatcher.dispatchAndExecute(
-        state,
-        AddFieldAction(
-          file = state.currentFile!!,
-          clazz = state.currentClass!!,
-          field = field
-        )
-      )
-    }
-
-    return state
+    return parseField(state, tokenData, true)
   }
 
   private fun parseVariable(state: State, tokenData: TokenData): State {
@@ -83,7 +55,15 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    if (tokenData.currentTokens.unconsumed[1].type != TokenType.IDENTIFIER) {
+    tokenData.currentTokens.consumeFirst()
+
+    return parseField(state, tokenData, false)
+  }
+
+  private fun parseField(state: State, tokenData: TokenData, constant: Boolean): State {
+    val nameToken = tokenData.currentTokens.consumeFirst()
+
+    if (nameToken.type != TokenType.IDENTIFIER) {
       tokenData.currentTokens.consumeAll()
 
       return state.copy(
@@ -94,14 +74,12 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    if (tokenData.currentTokens.unconsumed.size == 2) {
+    if (tokenData.currentTokens.isConsumed()) {
       val field = Field(
-        name = tokenData.currentTokens.unconsumed[1].value,
+        name = nameToken.value,
         type = null,
-        constant = false
+        constant = constant
       )
-
-      tokenData.currentTokens.consumeAll()
 
       return dispatcher.dispatchAndExecute(
         state,
@@ -112,6 +90,45 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         )
       )
     }
+
+    if (tokenData.currentTokens.consumeFirst().type != TokenType.COLON || tokenData.currentTokens.unconsumed.size > 1) {
+      tokenData.currentTokens.consumeAll()
+
+      return state.copy(
+        errors = state.errors + CompileError(
+          message = "Invalid field type declaration",
+          source = tokenData.source
+        )
+      )
+    }
+
+    val typeToken = tokenData.currentTokens.consumeFirst()
+
+    if (typeToken.type != TokenType.IDENTIFIER) {
+      tokenData.currentTokens.consumeAll()
+
+      return state.copy(
+        errors = state.errors + CompileError(
+          message = "Invalid parameter type",
+          source = tokenData.source
+        )
+      )
+    }
+
+    val field = Field(
+      name = nameToken.value,
+      type = typeToken.value,
+      constant = constant
+    )
+
+    return dispatcher.dispatchAndExecute(
+      state,
+      AddFieldAction(
+        file = state.currentFile!!,
+        clazz = state.currentClass!!,
+        field = field
+      )
+    )
 
     return state
   }

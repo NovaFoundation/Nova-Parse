@@ -1,5 +1,6 @@
 class thing {
   let x
+  let o: mytype
 
   aoeu(test, again: number, hey) {
     let y
