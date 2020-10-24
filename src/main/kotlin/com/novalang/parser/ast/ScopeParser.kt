@@ -16,7 +16,7 @@ import com.novalang.parser.actions.ReplaceScopeAction
 import com.novalang.parser.actions.ScopeParseAction
 import com.novalang.replace
 
-class ScopeParser(private val dispatcher: Dispatcher) : Reducer() {
+class ScopeParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is FileParseAction -> parseFile(state, action.tokenData)
@@ -24,18 +24,62 @@ class ScopeParser(private val dispatcher: Dispatcher) : Reducer() {
       is ScopeParseAction -> parseFile(state, action.tokenData)
       is AddLocalDeclarationAction -> addLocalDeclaration(state, action)
       is AddFunctionAction -> addFunctionScope(state, action)
-      is ReplaceFunctionAction -> replaceFunction(state, action)
       is ReplaceScopeAction -> replaceScope(state, action)
       else -> state
     }
   }
 
+  private fun replaceScope(initialState: State, action: ReplaceScopeAction): State {
+    var state = initialState
+
+    val index = state.scopes.indexOf(action.oldScope)
+
+    if (index != -1) {
+      state = state.copy(
+        scopes = state.scopes.replace(action.oldScope, action.newScope)
+      )
+
+      // function level scope
+      if (index == 0) {
+        val newFunction = state.currentFunction!!.copy(
+          scope = action.newScope
+        )
+
+        return dispatcher.dispatchAndExecute(
+          state,
+          ReplaceFunctionAction(
+            file = state.currentFile!!,
+            clazz = state.currentClass!!,
+            oldFunction = state.currentFunction!!,
+            newFunction = newFunction
+          )
+        )
+      } else { // nested scope
+        val oldScope = state.scopes[index - 1]
+        val newScope = oldScope.copy(
+          statements = oldScope.statements.replace(action.oldScope, action.newScope)
+        )
+
+        return dispatcher.dispatchAndExecute(
+          state,
+          ReplaceScopeAction(
+            file = state.currentFile!!,
+            clazz = state.currentClass!!,
+            oldScope = oldScope,
+            newScope = newScope
+          )
+        )
+      }
+    }
+
+    return state
+  }
+
   private fun addLocalDeclaration(state: State, action: AddLocalDeclarationAction): State {
-    val lastScopeable = state.scopes.last { it.scope != null }
-    val lastScope = lastScopeable.scope!!
+    val lastScope = state.scopes.last()
 
     val newScope = lastScope.copy(
-      localDeclarations = lastScope.localDeclarations + action.localDeclaration
+      statements = lastScope.statements + action.localDeclaration
     )
 
     return dispatcher.dispatchAndExecute(
@@ -43,29 +87,9 @@ class ScopeParser(private val dispatcher: Dispatcher) : Reducer() {
       ReplaceScopeAction(
         file = state.currentFile!!,
         clazz = state.currentClass!!,
-        scopeable = lastScopeable,
         oldScope = lastScope,
         newScope = newScope
       )
-    )
-  }
-
-  private fun replaceScope(initialState: State, action: ReplaceScopeAction): State {
-    val state = initialState.copy(
-      scopes = initialState.scopes.replace(action.oldScope, action.newScope)
-    )
-
-    val newScopeable = action.scopeable.setScope(action.newScope)
-
-    return dispatcher.dispatchAndExecute(
-      state,
-      replaceNodeAction(state, action.scopeable, newScopeable)
-    )
-  }
-
-  private fun replaceFunction(state: State, action: ReplaceFunctionAction): State {
-    return state.copy(
-      scopes = state.scopes.replace(action.oldFunction, action.newFunction)
     )
   }
 
@@ -79,8 +103,18 @@ class ScopeParser(private val dispatcher: Dispatcher) : Reducer() {
       )
     }
 
-    return state.copy(
-      scopes = state.scopes + action.function
+    val newFunction = action.function.copy(scope = Scope())
+
+    return dispatcher.dispatchAndExecute(
+      state.copy(
+        scopes = state.scopes + newFunction.scope!!
+      ),
+      ReplaceFunctionAction(
+        file = state.currentFile!!,
+        clazz = state.currentClass!!,
+        oldFunction = action.function,
+        newFunction = newFunction
+      )
     )
   }
 
@@ -92,28 +126,32 @@ class ScopeParser(private val dispatcher: Dispatcher) : Reducer() {
     }
   }
 
-  private fun parseScopeStart(state: State, tokenData: TokenData): State {
+  private fun parseScopeStart(initialState: State, tokenData: TokenData): State {
+    var state = initialState
+
     if (tokenData.currentTokens.unconsumed.size == 1) {
       tokenData.currentTokens.consumeAll()
 
-      val scope = Scope()
       val lastScope = state.scopes.last()
 
-      // if nested scope
-      val newScope = if (lastScope.scope != null) {
-        lastScope.setScope(lastScope.scope!!.setScope(scope) as Scope)
-      } else {
-        lastScope.setScope(scope)
-      }
+      val scope = Scope()
+
+      val newScope = lastScope.copy(
+        statements = lastScope.statements + scope
+      )
+
+      state = state.copy(
+        scopes = state.scopes + scope
+      )
 
       return dispatcher.dispatchAndExecute(
-        state.copy(
-          scopes = state.scopes.replace(
-            lastScope,
-            newScope
-          ) + scope
-        ),
-        replaceNodeAction(state, lastScope, newScope)
+        state,
+        ReplaceScopeAction(
+          file = state.currentFile!!,
+          clazz = state.currentClass!!,
+          oldScope = lastScope,
+          newScope = newScope
+        )
       )
     }
 

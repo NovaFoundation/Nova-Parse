@@ -10,7 +10,7 @@ import com.novalang.parser.actions.AddLocalDeclarationAction
 import com.novalang.parser.actions.DispatcherAction
 import com.novalang.parser.actions.ScopeParseAction
 
-class LocalDeclarationParser(private val dispatcher: Dispatcher) : Reducer() {
+class LocalDeclarationParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is ScopeParseAction -> parseLocalDeclaration(state, action.tokenData)

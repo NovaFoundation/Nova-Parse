@@ -53,7 +53,7 @@ class Parser(
 
   private fun getParseAction(state: State, tokenData: TokenData): ParseAction {
     return when {
-      state.scopes.size > 1 -> ScopeParseAction(tokenData)
+      state.scopes.isNotEmpty() -> ScopeParseAction(tokenData)
       state.currentClass != null -> ClassParseAction(tokenData)
       else -> FileParseAction(tokenData)
     }

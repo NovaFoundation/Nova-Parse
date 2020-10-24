@@ -14,14 +14,36 @@ import com.novalang.parser.actions.ClassParseAction
 import com.novalang.parser.actions.DispatcherAction
 import com.novalang.parser.actions.ParameterParseAction
 import com.novalang.parser.actions.ReplaceFunctionAction
+import com.novalang.parser.actions.ReplaceScopeAction
 
-class FunctionParser(private val dispatcher: Dispatcher) : Reducer() {
+class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is ClassParseAction -> parseClass(state, action.tokenData)
       is AddParameterAction -> addParameter(state, action)
+      is ReplaceScopeAction -> replaceScope(state, action)
       else -> state
     }
+  }
+
+  private fun replaceScope(state: State, action: ReplaceScopeAction): State {
+    if (state.currentFunction?.scope == action.oldScope) {
+      val newFunction = state.currentFunction.copy(
+        scope = action.newScope
+      )
+
+      return dispatcher.dispatchAndExecute(
+        state,
+        ReplaceFunctionAction(
+          file = state.currentFile!!,
+          clazz = state.currentClass!!,
+          oldFunction = state.currentFunction,
+          newFunction = newFunction
+        )
+      )
+    }
+
+    return state
   }
 
   private fun addParameter(state: State, action: AddParameterAction): State {
@@ -90,6 +112,8 @@ class FunctionParser(private val dispatcher: Dispatcher) : Reducer() {
           )
         )
       }
+
+      tokenData.currentTokens.consumeFirst()
 
       val function = Function(name = name)
 

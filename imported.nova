@@ -3,5 +3,9 @@ class thing {
 
   aoeu(test, again: number, hey) {
     let y
+
+    {
+      let z
+    }
   }
 }

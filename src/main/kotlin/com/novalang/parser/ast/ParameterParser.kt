@@ -11,7 +11,7 @@ import com.novalang.parser.actions.AddParameterAction
 import com.novalang.parser.actions.DispatcherAction
 import com.novalang.parser.actions.ParameterParseAction
 
-class ParameterParser(private val dispatcher: Dispatcher) : Reducer() {
+class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is ParameterParseAction -> parseParameter(state, action)

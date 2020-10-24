@@ -1,14 +1,9 @@
 package com.novalang.ast
 
 data class Scope(
-  val localDeclarations: List<LocalDeclaration> = emptyList(),
-  override val scope: Scope? = null,
+  val statements: List<Node> = emptyList(),
   override val id: Int = Node.counter++
-) : Scopeable {
-  override fun setScope(scope: Scope?): Scopeable {
-    return copy(scope = scope)
-  }
-
+) : Node {
   override fun equals(other: Any?): Boolean {
     return other is Scope && id == other.id
   }

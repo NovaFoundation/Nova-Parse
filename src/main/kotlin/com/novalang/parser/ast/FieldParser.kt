@@ -10,7 +10,7 @@ import com.novalang.parser.actions.AddFieldAction
 import com.novalang.parser.actions.ClassParseAction
 import com.novalang.parser.actions.DispatcherAction
 
-class FieldParser(private val dispatcher: Dispatcher) : Reducer() {
+class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is ClassParseAction -> parseClass(state, action.tokenData)

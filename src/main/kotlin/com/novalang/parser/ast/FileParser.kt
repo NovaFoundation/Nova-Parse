@@ -13,7 +13,7 @@ import com.novalang.parser.actions.ReplaceFileAction
 import com.novalang.replace
 import java.io.File as JavaFile
 
-class FileParser(private val dispatcher: Dispatcher) : Reducer() {
+class FileParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is InitFileAction -> initFile(state, action.file)

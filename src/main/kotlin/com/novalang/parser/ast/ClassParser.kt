@@ -15,7 +15,7 @@ import com.novalang.parser.actions.ReplaceClassAction
 import com.novalang.parser.actions.ReplaceFunctionAction
 import com.novalang.replace
 
-class ClassParser(private val dispatcher: Dispatcher) : Reducer() {
+class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is FileParseAction -> parseFile(state, action.tokenData)

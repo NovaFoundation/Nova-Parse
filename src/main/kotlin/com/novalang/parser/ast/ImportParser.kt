@@ -10,7 +10,7 @@ import com.novalang.parser.TokenType
 import com.novalang.parser.actions.FileParseAction
 import com.novalang.replace
 
-class ImportParser(private val dispatcher: Dispatcher) : Reducer() {
+class ImportParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is FileParseAction -> parseFile(state, action.tokenData)
