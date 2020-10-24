@@ -9,6 +9,14 @@ class thing {
       let z: bob
 
       let q
+
+      {
+        let uu
+
+        let zz
+
+        zz = 123
+      }
     }
   }
 }

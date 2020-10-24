@@ -3,11 +3,13 @@ package com.novalang
 import com.novalang.parser.Dispatcher
 import com.novalang.parser.Parser
 import com.novalang.parser.State
+import com.novalang.parser.ast.AssignmentParser
 import com.novalang.parser.ast.FieldParser
 import com.novalang.parser.ast.FileParser
 import com.novalang.parser.ast.ImportParser
 import com.novalang.parser.ast.ClassParser
 import com.novalang.parser.ast.FunctionParser
+import com.novalang.parser.ast.LiteralParser
 import com.novalang.parser.ast.LocalDeclarationParser
 import com.novalang.parser.ast.ParameterParser
 import com.novalang.parser.ast.ScopeParser
@@ -25,6 +27,8 @@ fun main(args: Array<String>) {
     .register(ScopeParser(dispatcher))
     .register(ParameterParser(dispatcher))
     .register(LocalDeclarationParser(dispatcher))
+    .register(AssignmentParser(dispatcher))
+    .register(LiteralParser(dispatcher))
 
   val parser = Parser(dispatcher)
 

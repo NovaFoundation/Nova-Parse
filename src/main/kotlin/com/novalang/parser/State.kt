@@ -1,6 +1,7 @@
 package com.novalang.parser
 
 import com.novalang.CompileError
+import com.novalang.ast.Assignment
 import com.novalang.ast.Class
 import com.novalang.ast.File
 import com.novalang.ast.Function
@@ -13,6 +14,7 @@ data class State(
   val currentFile: File? = null,
   val currentClass: Class? = null,
   val currentFunction: Function? = null,
+  val currentAssignment: Assignment? = null,
   val errors: List<CompileError> = emptyList(),
   val imports: Set<Import> = emptySet(),
   val parsedFiles: Set<JavaFile> = emptySet(),

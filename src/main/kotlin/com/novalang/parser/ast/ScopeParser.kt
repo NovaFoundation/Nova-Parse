@@ -1,12 +1,14 @@
 package com.novalang.parser.ast
 
 import com.novalang.CompileError
+import com.novalang.ast.Node
 import com.novalang.ast.Scope
 import com.novalang.parser.Dispatcher
 import com.novalang.parser.actions.DispatcherAction
 import com.novalang.parser.State
 import com.novalang.parser.TokenData
 import com.novalang.parser.TokenType
+import com.novalang.parser.actions.AddAssignmentAction
 import com.novalang.parser.actions.AddFunctionAction
 import com.novalang.parser.actions.AddLocalDeclarationAction
 import com.novalang.parser.actions.ClassParseAction
@@ -22,7 +24,8 @@ class ScopeParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       is FileParseAction -> parseFile(state, action.tokenData)
       is ClassParseAction -> parseFile(state, action.tokenData)
       is ScopeParseAction -> parseFile(state, action.tokenData)
-      is AddLocalDeclarationAction -> addLocalDeclaration(state, action)
+      is AddLocalDeclarationAction -> addStatement(state, action.localDeclaration)
+      is AddAssignmentAction -> addStatement(state, action.assignment)
       is AddFunctionAction -> addFunctionScope(state, action)
       is ReplaceScopeAction -> replaceScope(state, action)
       else -> state
@@ -75,11 +78,11 @@ class ScopeParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     return state
   }
 
-  private fun addLocalDeclaration(state: State, action: AddLocalDeclarationAction): State {
+  private fun addStatement(state: State, node: Node): State {
     val lastScope = state.scopes.last()
 
     val newScope = lastScope.copy(
-      statements = lastScope.statements + action.localDeclaration
+      statements = lastScope.statements + node
     )
 
     return dispatcher.dispatchAndExecute(
