@@ -16,6 +16,8 @@ enum class TokenType {
   SLASH,
   PIPE,
   AMPERSAND,
+  IF,
+  ELSE,
   IMPORT,
   CLASS,
   LET,

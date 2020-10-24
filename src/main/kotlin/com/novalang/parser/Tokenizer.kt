@@ -25,7 +25,7 @@ class Tokenizer(
 ) : Iterator<TokenData> {
   private var tokenData: TokenData = TokenData()
   private var nextLine: String? = null
-
+  private var lineNumber: Int = 0
   // val tokenData: TokenData
   //   get() = _tokenData
 
@@ -39,6 +39,7 @@ class Tokenizer(
     }
 
     val line = input.readLine()
+    lineNumber++
 
     return when {
       line == null -> null
@@ -50,6 +51,7 @@ class Tokenizer(
   override fun next(): TokenData {
     val line = nextLineWithContent()
     val content = line!!.trim()
+    val startWhitespace = line.indexOf(content[0])
     val tokens = mutableListOf<Token>()
     var prevIndex = 0
     var wasSymbol = false
@@ -59,7 +61,14 @@ class Tokenizer(
         val str = content.substring(prevIndex, i)
 
         if (str.isNotBlank()) {
-          tokens.add(stringToToken(str))
+          tokens.add(
+            Token(
+              value = str,
+              type = stringToTokenType(str),
+              lineNumber = lineNumber,
+              column = prevIndex + startWhitespace + 1
+            )
+          )
         }
 
         prevIndex = i
@@ -68,7 +77,14 @@ class Tokenizer(
         val str = content.substring(prevIndex, i)
 
         if (str.isNotBlank()) {
-          tokens.add(stringToToken(str))
+          tokens.add(
+            Token(
+              value = str,
+              type = stringToTokenType(str),
+              lineNumber = lineNumber,
+              column = prevIndex + startWhitespace + 1
+            )
+          )
         }
 
         prevIndex = i
@@ -76,7 +92,16 @@ class Tokenizer(
       }
     }
 
-    tokens.add(stringToToken(content.substring(prevIndex)))
+    val lastStr = content.substring(prevIndex)
+
+    tokens.add(
+      Token(
+        value = lastStr,
+        type = stringToTokenType(lastStr),
+        lineNumber = lineNumber,
+        column = prevIndex + startWhitespace + 1
+      )
+    )
 
     tokenData = tokenData.copy(
       currentTokens = TokenList(compress(tokens)),
@@ -86,28 +111,30 @@ class Tokenizer(
     return tokenData
   }
 
-  private fun stringToToken(str: String): Token {
+  private fun stringToTokenType(str: String): TokenType {
     return when (str) {
-      "." -> Token(value = str, type = TokenType.DOT)
-      " " -> Token(value = str, type = TokenType.SPACE)
-      "{" -> Token(value = str, type = TokenType.OPENING_BRACE)
-      "}" -> Token(value = str, type = TokenType.CLOSING_BRACE)
-      "(" -> Token(value = str, type = TokenType.OPENING_PAREN)
-      ")" -> Token(value = str, type = TokenType.CLOSING_PAREN)
-      "+" -> Token(value = str, type = TokenType.PLUS)
-      "-" -> Token(value = str, type = TokenType.MINUS)
-      "=" -> Token(value = str, type = TokenType.EQUALS)
-      ":" -> Token(value = str, type = TokenType.COLON)
-      "*" -> Token(value = str, type = TokenType.ASTERISK)
-      "/" -> Token(value = str, type = TokenType.SLASH)
-      "|" -> Token(value = str, type = TokenType.PIPE)
-      "&" -> Token(value = str, type = TokenType.AMPERSAND)
-      "import" -> Token(value = str, type = TokenType.IMPORT)
-      "class" -> Token(value = str, type = TokenType.CLASS)
-      "let" -> Token(value = str, type = TokenType.LET)
-      "var" -> Token(value = str, type = TokenType.VAR)
-      "," -> Token(value = str, type = TokenType.COMMA)
-      else -> Token(value = str, type = TokenType.IDENTIFIER)
+      "." -> TokenType.DOT
+      " " -> TokenType.SPACE
+      "{" -> TokenType.OPENING_BRACE
+      "}" -> TokenType.CLOSING_BRACE
+      "(" -> TokenType.OPENING_PAREN
+      ")" -> TokenType.CLOSING_PAREN
+      "+" -> TokenType.PLUS
+      "-" -> TokenType.MINUS
+      "=" -> TokenType.EQUALS
+      ":" -> TokenType.COLON
+      "*" -> TokenType.ASTERISK
+      "/" -> TokenType.SLASH
+      "|" -> TokenType.PIPE
+      "&" -> TokenType.AMPERSAND
+      "if" -> TokenType.IF
+      "else" -> TokenType.ELSE
+      "import" -> TokenType.IMPORT
+      "class" -> TokenType.CLASS
+      "let" -> TokenType.LET
+      "var" -> TokenType.VAR
+      "," -> TokenType.COMMA
+      else -> TokenType.IDENTIFIER
     }
   }
 
