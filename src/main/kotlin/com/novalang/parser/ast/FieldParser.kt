@@ -129,7 +129,5 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         field = field
       )
     )
-
-    return state
   }
 }

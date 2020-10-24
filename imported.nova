@@ -6,7 +6,9 @@ class thing {
     let y
 
     {
-      let z
+      let z: bob
+
+      let q
     }
   }
 }

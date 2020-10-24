@@ -38,37 +38,9 @@ class LocalDeclarationParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    if (tokenData.currentTokens.unconsumed[1].type != TokenType.IDENTIFIER) {
-      tokenData.currentTokens.consumeAll()
+    tokenData.currentTokens.consumeFirst()
 
-      return state.copy(
-        errors = state.errors + CompileError(
-          message = "Invalid constant declaration name",
-          source = tokenData.source
-        )
-      )
-    }
-
-    if (tokenData.currentTokens.unconsumed.size == 2) {
-      val localDeclaration = LocalDeclaration(
-        name = tokenData.currentTokens.unconsumed[1].value,
-        type = null,
-        constant = true
-      )
-
-      tokenData.currentTokens.consumeAll()
-
-      return dispatcher.dispatchAndExecute(
-        state,
-        AddLocalDeclarationAction(
-          file = state.currentFile!!,
-          clazz = state.currentClass!!,
-          localDeclaration = localDeclaration
-        )
-      )
-    }
-
-    return state
+    return parseLocalDeclaration(state, tokenData, true)
   }
 
   private fun parseVariable(state: State, tokenData: TokenData): State {
@@ -83,7 +55,15 @@ class LocalDeclarationParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    if (tokenData.currentTokens.unconsumed[1].type != TokenType.IDENTIFIER) {
+    tokenData.currentTokens.consumeFirst()
+
+    return parseLocalDeclaration(state, tokenData, false)
+  }
+
+  private fun parseLocalDeclaration(state: State, tokenData: TokenData, constant: Boolean): State {
+    val nameToken = tokenData.currentTokens.consumeFirst()
+
+    if (nameToken.type != TokenType.IDENTIFIER) {
       tokenData.currentTokens.consumeAll()
 
       return state.copy(
@@ -94,14 +74,12 @@ class LocalDeclarationParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    if (tokenData.currentTokens.unconsumed.size == 2) {
+    if (tokenData.currentTokens.isConsumed()) {
       val localDeclaration = LocalDeclaration(
-        name = tokenData.currentTokens.unconsumed[1].value,
+        name = nameToken.value,
         type = null,
-        constant = false
+        constant = constant
       )
-
-      tokenData.currentTokens.consumeAll()
 
       return dispatcher.dispatchAndExecute(
         state,
@@ -113,6 +91,43 @@ class LocalDeclarationParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    return state
+    if (tokenData.currentTokens.consumeFirst().type != TokenType.COLON || tokenData.currentTokens.unconsumed.size > 1) {
+      tokenData.currentTokens.consumeAll()
+
+      return state.copy(
+        errors = state.errors + CompileError(
+          message = "Invalid localDeclaration type declaration",
+          source = tokenData.source
+        )
+      )
+    }
+
+    val typeToken = tokenData.currentTokens.consumeFirst()
+
+    if (typeToken.type != TokenType.IDENTIFIER) {
+      tokenData.currentTokens.consumeAll()
+
+      return state.copy(
+        errors = state.errors + CompileError(
+          message = "Invalid parameter type",
+          source = tokenData.source
+        )
+      )
+    }
+
+    val localDeclaration = LocalDeclaration(
+      name = nameToken.value,
+      type = typeToken.value,
+      constant = constant
+    )
+
+    return dispatcher.dispatchAndExecute(
+      state,
+      AddLocalDeclarationAction(
+        file = state.currentFile!!,
+        clazz = state.currentClass!!,
+        localDeclaration = localDeclaration
+      )
+    )
   }
 }
