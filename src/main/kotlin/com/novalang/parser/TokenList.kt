@@ -8,15 +8,19 @@ data class TokenList(
   val unconsumed: List<Token>
     get() = _unconsumed
 
-  fun consumeAll() {
+  fun consumeAll(): TokenList {
     _unconsumed.clear()
+
+    return this
   }
 
-  fun consumeAllButLast(count: Int = 1) {
+  fun consumeAllButLast(count: Int = 1): TokenList {
     val last = unconsumed.subList(unconsumed.size - count, unconsumed.size).toList()
 
     _unconsumed.clear()
     _unconsumed.addAll(last)
+
+    return this
   }
 
   fun consumeFirst(): Token {
@@ -39,5 +43,14 @@ data class TokenList(
 
   fun isConsumed(): Boolean {
     return unconsumed.isEmpty()
+  }
+
+  fun clone(): TokenList {
+    val clone = copy()
+
+    clone._unconsumed.clear()
+    clone._unconsumed.addAll(_unconsumed)
+
+    return clone
   }
 }

@@ -100,8 +100,7 @@ class ScopeParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     if (state.scopes.isNotEmpty()) {
       return state.copy(
         errors = state.errors + CompileError(
-          message = "Nested functions are not allowed",
-          source = ""
+          message = "Nested functions are not allowed"
         )
       )
     }
@@ -169,7 +168,7 @@ class ScopeParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Unexpected closing curly brace",
-            source = tokenData.source
+            tokenData = tokenData.unconsumed()
           )
         )
       } else if (state.scopes.isEmpty()) {

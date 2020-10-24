@@ -75,7 +75,7 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Missing function declaration scope",
-            source = tokenData.source
+            tokenData = tokenData.unconsumed()
           )
         )
       }
@@ -108,7 +108,7 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Invalid function declaration",
-            source = tokenData.source
+            tokenData = tokenData.consumeAllButLast()
           )
         )
       }

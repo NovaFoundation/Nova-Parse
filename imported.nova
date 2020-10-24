@@ -9,10 +9,12 @@ class thing {
       let z: bob
 
       let q
-
+// testing
       {
         let uu
 
+
+        // let aeuo = 12
         let zz
 
         zz = 123

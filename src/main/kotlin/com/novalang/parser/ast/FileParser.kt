@@ -29,16 +29,14 @@ class FileParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     if (file.isDirectory) {
       return state.copy(
         errors = state.errors + CompileError(
-          message = "Cannot parse a directory \"${file.canonicalPath}\"",
-          source = ""
+          message = "Cannot parse a directory \"${file.canonicalPath}\""
         )
       )
     }
     if (!file.isFile) {
       return state.copy(
         errors = state.errors + CompileError(
-          message = "Invalid source file \"${file.canonicalPath}\"",
-          source = ""
+          message = "Invalid source file \"${file.canonicalPath}\""
         )
       )
     }

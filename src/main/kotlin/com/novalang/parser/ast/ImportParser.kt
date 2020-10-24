@@ -26,7 +26,7 @@ class ImportParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Too many arguments given to import statement",
-            source = tokenData.source
+            tokenData = tokenData.unconsumed()
           )
         )
       }
@@ -36,7 +36,7 @@ class ImportParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Import location not specified",
-            source = tokenData.source
+            tokenData = tokenData.unconsumed()
           )
         )
       }
@@ -49,7 +49,7 @@ class ImportParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Import location must be specified in quotes",
-            source = tokenData.source
+            tokenData = tokenData.unconsumed()
           )
         )
       }
@@ -65,7 +65,7 @@ class ImportParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Duplicate import \"${importLocation}\"",
-            source = tokenData.source
+            tokenData = tokenData.unconsumed()
           )
         )
       }

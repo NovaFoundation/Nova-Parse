@@ -33,7 +33,7 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       return state.copy(
         errors = state.errors + CompileError(
           message = "Missing constant declaration name",
-          source = tokenData.source
+          tokenData = tokenData.unconsumed()
         )
       )
     }
@@ -50,7 +50,7 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       return state.copy(
         errors = state.errors + CompileError(
           message = "Missing variable declaration name",
-          source = tokenData.source
+          tokenData = tokenData.unconsumed()
         )
       )
     }
@@ -69,7 +69,7 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       return state.copy(
         errors = state.errors + CompileError(
           message = "Invalid variable declaration name",
-          source = tokenData.source
+          tokenData = tokenData.unconsumed()
         )
       )
     }
@@ -97,7 +97,7 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       return state.copy(
         errors = state.errors + CompileError(
           message = "Invalid field type declaration",
-          source = tokenData.source
+          tokenData = tokenData.unconsumed()
         )
       )
     }
@@ -110,7 +110,7 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       return state.copy(
         errors = state.errors + CompileError(
           message = "Invalid parameter type",
-          source = tokenData.source
+          tokenData = tokenData.unconsumed()
         )
       )
     }

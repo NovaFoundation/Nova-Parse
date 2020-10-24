@@ -66,7 +66,7 @@ class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Class name not specified",
-            source = tokenData.source
+            tokenData = tokenData.unconsumed()
           )
         )
       }
@@ -76,7 +76,7 @@ class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Too many arguments given to class declaration",
-            source = tokenData.source
+            tokenData = tokenData.unconsumed()
           )
         )
       }
@@ -86,7 +86,7 @@ class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Class declaration missing opening curly brace",
-            source = tokenData.source
+            tokenData = tokenData.unconsumed()
           )
         )
       }
@@ -99,7 +99,7 @@ class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Invalid class name \"${classNameToken.value}\"",
-            source = tokenData.source
+            tokenData = tokenData.unconsumed()
           )
         )
       }

@@ -39,8 +39,7 @@ class Parser(
     if (state.scopes.isNotEmpty()) {
       state = state.copy(
         errors = state.errors + CompileError(
-          message = "Missing ending brace",
-          source = ""
+          message = "Missing ending brace"
         )
       )
     }

@@ -47,7 +47,7 @@ class AssignmentParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         return state.copy(
           errors = state.errors + CompileError(
             message = "Invalid variable name for assignment",
-            source = action.tokenData.source
+            tokenData = action.tokenData.unconsumed()
           )
         )
       }

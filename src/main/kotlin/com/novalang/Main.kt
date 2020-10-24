@@ -46,7 +46,7 @@ fun main(args: Array<String>) {
 
   println(state)
 
-  state.errors.forEach { System.err.println("Error: \"${it.message}\"\n\t${it.source.trim()}") }
+  state.errors.forEach { System.err.println(it) }
 }
 
 private fun getUnparsedFiles(state: State): List<File> {

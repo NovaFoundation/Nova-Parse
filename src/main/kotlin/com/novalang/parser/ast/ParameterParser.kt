@@ -58,7 +58,7 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       return state.copy(
         errors = state.errors + CompileError(
           message = "Missing parameter name",
-          source = action.tokenData.source
+          tokenData = action.tokenData.unconsumed()
         )
       )
     }
@@ -87,7 +87,7 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       return state.copy(
         errors = state.errors + CompileError(
           message = "Invalid parameter type declaration",
-          source = action.tokenData.source
+          tokenData = action.tokenData.unconsumed()
         )
       )
     }
@@ -100,7 +100,7 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       return state.copy(
         errors = state.errors + CompileError(
           message = "Invalid parameter type",
-          source = action.tokenData.source
+          tokenData = action.tokenData.unconsumed()
         )
       )
     }

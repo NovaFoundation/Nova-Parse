@@ -41,9 +41,12 @@ class Tokenizer(
     val line = input.readLine()
     lineNumber++
 
+    val content = line?.trim()
+
     return when {
-      line == null -> null
-      line.trim().isNotEmpty() -> line
+      content == null -> null
+      content.startsWith("//") -> nextLineWithContent()
+      !content.isBlank() -> line
       else -> nextLineWithContent()
     }
   }
