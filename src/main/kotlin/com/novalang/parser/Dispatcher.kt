@@ -54,7 +54,7 @@ class Dispatcher {
       reducedState.copy(
         errors = reducedState.errors + CompileError(
           message = "Unconsumed statement",
-          source = action.tokenData.source
+          tokenData = action.tokenData
         )
       )
     } else {
