@@ -1,8 +1,7 @@
 package com.novalang.ast
 
 data class IfStatement(
-  val variable: Variable,
-  val assignmentValue: Value,
+  val expression: Value,
   override val id: Int = Node.counter++
 ) : Node {
   override fun equals(other: Any?): Boolean {

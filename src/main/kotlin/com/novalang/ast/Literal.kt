@@ -1,7 +1,17 @@
 package com.novalang.ast
 
+enum class LiteralType {
+  BOOLEAN,
+  BYTE,
+  SHORT,
+  INT,
+  LONG,
+  NULL
+}
+
 data class Literal(
   val value: String,
+  val type: LiteralType,
   override val id: Int = Node.counter++
 ) : Value {
   override fun equals(other: Any?): Boolean {
@@ -13,6 +23,6 @@ data class Literal(
   }
 
   companion object {
-    val NULL = Literal("null")
+    val NULL = Literal("null", LiteralType.NULL)
   }
 }
