@@ -126,20 +126,22 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         )
       )
 
-      state = parameterTokens.fold(state) { acc, tokens ->
-        val parameterTokenData = TokenData(
-          currentTokens = TokenList(tokens),
-          source = tokenData.source
-        )
-
-        dispatcher.dispatchAndExecute(
-          acc,
-          ParameterParseAction(
-            tokenData = parameterTokenData,
-            function = acc.currentFunction!!
+      state = parameterTokens
+        .filter { it.isNotEmpty() }
+        .fold(state) { acc, tokens ->
+          val parameterTokenData = TokenData(
+            currentTokens = TokenList(tokens),
+            source = tokenData.source
           )
-        )
-      }
+
+          dispatcher.dispatchAndExecute(
+            acc,
+            ParameterParseAction(
+              tokenData = parameterTokenData,
+              function = acc.currentFunction!!
+            )
+          )
+        }
 
       return state
     }
