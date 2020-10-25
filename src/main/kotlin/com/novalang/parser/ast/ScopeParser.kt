@@ -10,6 +10,7 @@ import com.novalang.parser.TokenData
 import com.novalang.parser.TokenType
 import com.novalang.parser.actions.AddAssignmentAction
 import com.novalang.parser.actions.AddFunctionAction
+import com.novalang.parser.actions.AddIfStatementAction
 import com.novalang.parser.actions.AddLocalDeclarationAction
 import com.novalang.parser.actions.ClassParseAction
 import com.novalang.parser.actions.FileParseAction
@@ -27,6 +28,7 @@ class ScopeParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       is AddLocalDeclarationAction -> addStatement(state, action.localDeclaration)
       is AddAssignmentAction -> addStatement(state, action.assignment)
       is AddFunctionAction -> addFunctionScope(state, action)
+      is AddIfStatementAction -> addIfStatementScope(state, action)
       is ReplaceScopeAction -> replaceScope(state, action)
       else -> state
     }
@@ -117,6 +119,12 @@ class ScopeParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         oldFunction = action.function,
         newFunction = newFunction
       )
+    )
+  }
+
+  private fun addIfStatementScope(state: State, action: AddIfStatementAction): State {
+    return addStatement(state, action.ifStatement).copy(
+      scopes = state.scopes + action.ifStatement.scope
     )
   }
 

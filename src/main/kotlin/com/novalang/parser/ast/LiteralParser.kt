@@ -7,8 +7,10 @@ import com.novalang.parser.State
 import com.novalang.parser.TokenData
 import com.novalang.parser.TokenType
 import com.novalang.parser.actions.AddAssignmentValueAction
+import com.novalang.parser.actions.AddIfStatementValueAction
 import com.novalang.parser.actions.AssignmentValueParseAction
 import com.novalang.parser.actions.DispatcherAction
+import com.novalang.parser.actions.IfStatementValueParseAction
 import java.lang.RuntimeException
 
 private val NUMBERS = setOf('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
@@ -20,6 +22,7 @@ class LiteralParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is AssignmentValueParseAction -> parseLiteralForAssignment(state, action)
+      is IfStatementValueParseAction -> parseLiteralForIfStatement(state, action)
       else -> state
     }
   }
@@ -31,6 +34,23 @@ class LiteralParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       return dispatcher.dispatchAndExecute(
         state,
         AddAssignmentValueAction(
+          file = state.currentFile!!,
+          clazz = state.currentClass!!,
+          value = literal
+        )
+      )
+    }
+
+    return state
+  }
+
+  private fun parseLiteralForIfStatement(state: State, action: IfStatementValueParseAction): State {
+    val literal = parseLiteral(action.tokenData)
+
+    if (literal != null) {
+      return dispatcher.dispatchAndExecute(
+        state,
+        AddIfStatementValueAction(
           file = state.currentFile!!,
           clazz = state.currentClass!!,
           value = literal

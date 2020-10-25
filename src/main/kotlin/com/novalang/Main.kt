@@ -9,6 +9,7 @@ import com.novalang.parser.ast.FileParser
 import com.novalang.parser.ast.ImportParser
 import com.novalang.parser.ast.ClassParser
 import com.novalang.parser.ast.FunctionParser
+import com.novalang.parser.ast.IfStatementParser
 import com.novalang.parser.ast.LiteralParser
 import com.novalang.parser.ast.LocalDeclarationParser
 import com.novalang.parser.ast.ParameterParser
@@ -19,6 +20,7 @@ fun main(args: Array<String>) {
   val dispatcher = Dispatcher()
 
   dispatcher
+    .register(IfStatementParser(dispatcher))
     .register(FileParser(dispatcher))
     .register(FieldParser(dispatcher))
     .register(FunctionParser(dispatcher))

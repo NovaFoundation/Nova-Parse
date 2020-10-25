@@ -23,6 +23,8 @@ class thing {
   }
   
   func2() {
-    
+    if (true) {
+    	
+    }
   }
 }
