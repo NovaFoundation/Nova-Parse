@@ -56,7 +56,7 @@ class IfStatementParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     tokens.consumeLastIfType(TokenType.CLOSING_PAREN) ?: return error(state, action.tokenData, "If statement missing closing parenthesis")
 
     if (tokens.isConsumed()) {
-      tokens.unconsumeLast()
+      tokens.unconsumeLast() // still allow parsing the scope as a scope block
 
       return error(state, action.tokenData, "If statement missing expression")
     }
