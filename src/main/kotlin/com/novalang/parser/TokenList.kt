@@ -71,6 +71,14 @@ data class TokenList(
     return consumed
   }
 
+  fun unconsumeLast(): Token {
+    val last = tokens.last { it !in unconsumed }
+
+    _unconsumed.add(last)
+
+    return last
+  }
+
   fun isNotConsumed(): Boolean {
     return !isConsumed()
   }

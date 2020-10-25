@@ -55,6 +55,12 @@ class IfStatementParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     tokens.consumeLastIfType(TokenType.OPENING_BRACE) ?: return error(state, action.tokenData, "If statement missing opening brace")
     tokens.consumeLastIfType(TokenType.CLOSING_PAREN) ?: return error(state, action.tokenData, "If statement missing closing parenthesis")
 
+    if (tokens.isConsumed()) {
+      tokens.unconsumeLast()
+
+      return error(state, action.tokenData, "If statement missing expression")
+    }
+
     val ifStatement = IfStatement(
       expression = Literal.NULL
     )
