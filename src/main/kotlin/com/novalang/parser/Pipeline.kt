@@ -3,50 +3,66 @@ package com.novalang.parser
 import com.novalang.CompileError
 import com.novalang.parser.actions.DispatcherAction
 
-data class Pipeline<RESPONSE_TYPE : BaseStageResponse>(
-  val stages: List<BaseStage<*>>
-) {
-  fun <NEW_RESPONSE_TYPE : BaseStageResponse> thenDoStage(action: () -> BaseStage<NEW_RESPONSE_TYPE>): Pipeline<NEW_RESPONSE_TYPE> {
+class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageResponse> {
+  private val stages: List<BaseStage<*>>
+  private lateinit var lastStage: STAGE_TYPE
+
+  private constructor(
+    stages: List<BaseStage<*>>
+  ) {
+    this.stages = stages
+  }
+
+  private constructor(
+    stages: List<BaseStage<*>>,
+    lastStage: STAGE_TYPE
+  ) : this(stages) {
+    this.lastStage = lastStage
+  }
+
+  fun <NEW_STAGE_TYPE : BaseStage<NEW_RESPONSE_TYPE>, NEW_RESPONSE_TYPE : BaseStageResponse> thenDoStage(action: () -> NEW_STAGE_TYPE): Pipeline<NEW_STAGE_TYPE, NEW_RESPONSE_TYPE> {
+    val stage = action()
+
     return Pipeline(
-      stages = stages + action()
+      stages = stages + stage,
+      lastStage = stage
     )
   }
 
-  fun thenDo(action: (response: RESPONSE_TYPE) -> Unit): Pipeline<RESPONSE_TYPE> {
-    stages.last().after {
-      action(it as RESPONSE_TYPE)
-    }
+  fun thenDo(action: (response: RESPONSE_TYPE) -> Unit): Pipeline<STAGE_TYPE, RESPONSE_TYPE> {
+    lastStage.after { action(it) }
 
     return this
   }
 
-  fun thenSetState(action: (state: State) -> State): Pipeline<RESPONSE_TYPE> {
+  fun thenSetState(action: (state: State) -> State): Pipeline<Stage, StageResponse> {
+    val newStage = Stage { _, state, _ -> StageResponse(action(state)) }
+
     return Pipeline(
-      stages = stages + Stage { _, state, _ -> StageResponse(action(state)) }
+      stages = stages + newStage,
+      lastStage = newStage
     )
   }
 
-  fun thenExpectToken(action: (tokens: TokenList) -> Token?): Pipeline<ExpectTokenStageResponse> {
+  fun thenExpectToken(action: (tokens: TokenList) -> Token?): Pipeline<ExpectTokenStage, ExpectTokenStageResponse> {
     return thenDoStage { ExpectTokenStage(getAction = action) }
   }
 
-  fun thenExpectTokenCount(count: Int): Pipeline<ExpectTokenCountStageResponse> {
+  fun thenExpectTokenCount(count: Int): Pipeline<ExpectTokenCountStage, ExpectTokenCountStageResponse> {
     return thenDoStage { ExpectTokenCountStage(count) }
   }
 
-  fun thenDoAction(action: (state: State, tokens: TokenList) -> DispatcherAction): Pipeline<StageResponse> {
+  fun thenDoAction(action: (state: State, tokens: TokenList) -> DispatcherAction): Pipeline<ActionStage, StageResponse> {
     return thenDoStage { ActionStage(getAction = action) }
   }
 
-  fun thenDoAll(action: (state: State, tokens: TokenList) -> List<BaseStage<*>>): Pipeline<StageResponse> {
+  fun thenDoAll(action: (state: State, tokens: TokenList) -> List<BaseStage<*>>): Pipeline<ReducerStage, StageResponse> {
     return thenDoStage { ReducerStage(getAction = action) }
   }
 
-  fun orElseError(action: (response: RESPONSE_TYPE) -> String): Pipeline<RESPONSE_TYPE> {
-    val stage = stages.last()
-
-    stage.after {
-      stage.errorMessage = action(it as RESPONSE_TYPE)
+  fun orElseError(action: (response: RESPONSE_TYPE) -> String): Pipeline<STAGE_TYPE, RESPONSE_TYPE> {
+    lastStage.after {
+      lastStage.errorMessage = action(it)
     }
 
     return this
@@ -74,8 +90,8 @@ data class Pipeline<RESPONSE_TYPE : BaseStageResponse>(
   }
 
   companion object {
-    fun create(): Pipeline<*> {
-      return Pipeline<BaseStageResponse>(emptyList())
+    fun create(): Pipeline<*, *> {
+      return Pipeline<BaseStage<BaseStageResponse>, BaseStageResponse>(emptyList())
     }
   }
 }
