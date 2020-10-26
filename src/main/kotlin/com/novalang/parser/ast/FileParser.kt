@@ -57,14 +57,16 @@ class FileParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun replaceClass(initialState: State, action: ReplaceClassAction): State {
-    val newFile = action.file.copy(
-      classes = action.file.classes.replace(action.oldClass, action.newClass)
+    var state = initialState
+
+    val newFile = state.currentFile!!.copy(
+      classes = state.currentFile!!.classes.replace(action.oldClass, action.newClass)
     )
 
-    val state = dispatcher.dispatchAndExecute(
+    state = dispatcher.dispatchAndExecute(
       initialState,
       ReplaceFileAction(
-        oldFile = action.file,
+        oldFile = state.currentFile!!,
         newFile = newFile
       )
     )

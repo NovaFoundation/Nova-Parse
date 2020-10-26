@@ -6,7 +6,6 @@ import com.novalang.parser.actions.ParseAction
 import com.novalang.parser.ast.Reducer
 
 class Dispatcher {
-  private var currentData: Any? = null
   private var reducers: List<Reducer> = emptyList()
   private val pendingActions: MutableList<DispatcherAction> = mutableListOf()
 
@@ -44,14 +43,14 @@ class Dispatcher {
     val action = pendingActions.removeFirst()
 
     state = reducers.fold(state) { acc, reducer ->
-      if (action !is ParseAction || (action.tokenData.currentTokens.tokens.isEmpty() || action.tokenData.currentTokens.isNotConsumed())) {
+      if (action !is ParseAction || (action.tokenData.tokens.tokens.isEmpty() || action.tokenData.tokens.isNotConsumed())) {
         reducer.reduce(acc, action)
       } else {
         acc
       }
     }
 
-    return if (action is ParseAction && action.tokenData.currentTokens.isNotConsumed()) {
+    return if (action is ParseAction && action.tokenData.tokens.isNotConsumed()) {
       state.copy(
         errors = state.errors + CompileError(
           message = "Unconsumed statement",

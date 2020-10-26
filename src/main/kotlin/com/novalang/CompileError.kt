@@ -23,7 +23,7 @@ data class CompileError(
 }
 
 private fun sourceLineNumber(tokenData: TokenData): Int {
-  return tokenData.currentTokens.tokens.first().lineNumber
+  return tokenData.tokens.tokens.first().lineNumber
 }
 
 private fun sourceFromTokenData(tokenData: TokenData): String {
@@ -31,13 +31,13 @@ private fun sourceFromTokenData(tokenData: TokenData): String {
 }
 
 private fun sourceStart(tokenData: TokenData): Int {
-  val firstToken = tokenData.currentTokens.unconsumed.firstOrNull() ?: return 0
+  val firstToken = tokenData.tokens.unconsumed.firstOrNull() ?: return 0
 
   return firstToken.column - 1
 }
 
 private fun sourceEnd(tokenData: TokenData): Int {
-  val lastToken = tokenData.currentTokens.unconsumed.lastOrNull() ?: return 0
+  val lastToken = tokenData.tokens.unconsumed.lastOrNull() ?: return 0
 
   return lastToken.column + lastToken.value.length - 1
 }

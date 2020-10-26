@@ -5,7 +5,6 @@ import com.novalang.parser.Dispatcher
 import com.novalang.parser.Pipeline
 import com.novalang.parser.State
 import com.novalang.parser.Token
-import com.novalang.parser.TokenData
 import com.novalang.parser.TokenType
 import com.novalang.parser.actions.AddClassAction
 import com.novalang.parser.actions.AddFieldAction
@@ -18,60 +17,62 @@ import com.novalang.replace
 
 class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
+    return reduceP(action).run(dispatcher, state, action.tokenData)
+  }
+
+  fun reduceP(action: DispatcherAction): Pipeline<*, *> {
     return when (action) {
-      is FileParseAction -> parseClass(state, action.tokenData)
-      is AddFieldAction -> addField(state, action)
-      is AddFunctionAction -> addFunction(state, action)
-      is ReplaceFunctionAction -> replaceFunction(state, action)
-      else -> state
+      is FileParseAction -> parseClass()
+      is AddFieldAction -> addField(action)
+      is AddFunctionAction -> addFunction(action)
+      is ReplaceFunctionAction -> replaceFunction(action)
+      else -> Pipeline.create()
     }
   }
 
-  private fun addField(state: State, action: AddFieldAction): State {
-    val newClass = action.clazz.copy(
-      fields = action.clazz.fields + action.field
-    )
+  private fun addField(action: AddFieldAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenDoAction { _, _ ->
+        val newClass = action.clazz.copy(
+          fields = action.clazz.fields + action.field
+        )
 
-    return dispatcher.dispatchAndExecute(
-      state,
-      ReplaceClassAction(
-        file = action.file,
-        oldClass = action.clazz,
-        newClass = newClass
-      )
-    )
+        ReplaceClassAction(
+          oldClass = action.clazz,
+          newClass = newClass
+        )
+      }
   }
 
-  private fun addFunction(state: State, action: AddFunctionAction): State {
-    val newClass = action.clazz.copy(
-      functions = action.clazz.functions + action.function
-    )
+  private fun addFunction(action: AddFunctionAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenSetState { it.copy(currentFunction = action.function) }
 
-    return dispatcher.dispatchAndExecute(
-      state.copy(
-        currentFunction = action.function
-      ),
-      ReplaceClassAction(
-        file = action.file,
-        oldClass = action.clazz,
-        newClass = newClass
-      )
-    )
+      .thenDoAction { state, _ ->
+        val newClass = state.currentClass!!.copy(
+          functions = state.currentClass.functions + action.function
+        )
+
+        ReplaceClassAction(
+          oldClass = state.currentClass,
+          newClass = newClass
+        )
+      }
   }
 
-  private fun parseClass(initialState: State, tokenData: TokenData): State {
+  private fun parseClass(): Pipeline<*, *> {
     lateinit var nameToken: Token
 
     return Pipeline.create()
-      .thenExpectToken { it.consumeFirstIfType(TokenType.CLASS) }
+      .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.CLASS) }
 
-      .thenExpectToken { it.consumeAtReverseIndexIfType(0, TokenType.OPENING_BRACE) }
+      .thenExpectToken { (tokens) -> tokens.consumeAtReverseIndexIfType(0, TokenType.OPENING_BRACE) }
       .orElseError { "Class missing declaration scope" }
 
       .thenExpectTokenCount(1)
       .orElseError { if (it.actual > it.expected) "Invalid class declaration" else "Class missing name" }
 
-      .thenExpectToken { it.consumeFirstIfType(TokenType.IDENTIFIER) }
+      .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.IDENTIFIER) }
       .thenDo { nameToken = it.token!! }
       .orElseError { "Invalid class name" }
 
@@ -83,20 +84,17 @@ class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
           newClass = state.currentClass!!
         )
       }
-
-      .run(dispatcher, initialState, tokenData)
   }
 
-  private fun replaceFunction(initialState: State, action: ReplaceFunctionAction): State {
+  private fun replaceFunction(action: ReplaceFunctionAction): Pipeline<*, *> {
     return Pipeline.create()
-      .thenDoAction { _, _ ->
-        val newClass = action.clazz.copy(
-          functions = action.clazz.functions.replace(action.oldFunction, action.newFunction)
+      .thenDoAction { state, _ ->
+        val newClass = state.currentClass!!.copy(
+          functions = state.currentClass.functions.replace(action.oldFunction, action.newFunction)
         )
 
         ReplaceClassAction(
-          file = action.file,
-          oldClass = action.clazz,
+          oldClass = state.currentClass,
           newClass = newClass
         )
       }
@@ -112,7 +110,5 @@ class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
           currentFunction = currentFunction
         )
       }
-
-      .run(dispatcher, initialState, TokenData())
   }
 }

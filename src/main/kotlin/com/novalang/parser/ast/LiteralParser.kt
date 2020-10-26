@@ -11,7 +11,6 @@ import com.novalang.parser.actions.AddIfStatementValueAction
 import com.novalang.parser.actions.AssignmentValueParseAction
 import com.novalang.parser.actions.DispatcherAction
 import com.novalang.parser.actions.IfStatementValueParseAction
-import java.lang.RuntimeException
 
 private val NUMBERS = setOf('0', '1', '2', '3', '4', '5', '6', '7', '8', '9')
 
@@ -62,7 +61,7 @@ class LiteralParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseLiteral(tokenData: TokenData): Literal? {
-    val tokens = tokenData.currentTokens
+    val tokens = tokenData.tokens
 
     if (tokens.unconsumed.size == 1) {
       val token = tokens.unconsumed.first()

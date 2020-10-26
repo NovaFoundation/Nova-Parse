@@ -19,7 +19,7 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseField(state: State, tokenData: TokenData): State {
-    return when (tokenData.currentTokens.unconsumed[0].type) {
+    return when (tokenData.tokens.unconsumed[0].type) {
       TokenType.LET -> parseConstant(state, tokenData)
       TokenType.VAR -> parseVariable(state, tokenData)
       else -> state
@@ -27,8 +27,8 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseConstant(state: State, tokenData: TokenData): State {
-    if (tokenData.currentTokens.unconsumed.size == 1) {
-      tokenData.currentTokens.consumeAll()
+    if (tokenData.tokens.unconsumed.size == 1) {
+      tokenData.tokens.consumeAll()
 
       return state.copy(
         errors = state.errors + CompileError(
@@ -38,14 +38,14 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    tokenData.currentTokens.consumeFirst()
+    tokenData.tokens.consumeFirst()
 
     return parseField(state, tokenData, true)
   }
 
   private fun parseVariable(state: State, tokenData: TokenData): State {
-    if (tokenData.currentTokens.unconsumed.size == 1) {
-      tokenData.currentTokens.consumeAll()
+    if (tokenData.tokens.unconsumed.size == 1) {
+      tokenData.tokens.consumeAll()
 
       return state.copy(
         errors = state.errors + CompileError(
@@ -55,16 +55,16 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    tokenData.currentTokens.consumeFirst()
+    tokenData.tokens.consumeFirst()
 
     return parseField(state, tokenData, false)
   }
 
   private fun parseField(state: State, tokenData: TokenData, constant: Boolean): State {
-    val nameToken = tokenData.currentTokens.consumeFirst()
+    val nameToken = tokenData.tokens.consumeFirst()
 
     if (nameToken.type != TokenType.IDENTIFIER) {
-      tokenData.currentTokens.consumeAll()
+      tokenData.tokens.consumeAll()
 
       return state.copy(
         errors = state.errors + CompileError(
@@ -74,7 +74,7 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    if (tokenData.currentTokens.isConsumed()) {
+    if (tokenData.tokens.isConsumed()) {
       val field = Field(
         name = nameToken.value,
         type = null,
@@ -91,8 +91,8 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    if (tokenData.currentTokens.consumeFirst().type != TokenType.COLON || tokenData.currentTokens.unconsumed.size > 1) {
-      tokenData.currentTokens.consumeAll()
+    if (tokenData.tokens.consumeFirst().type != TokenType.COLON || tokenData.tokens.unconsumed.size > 1) {
+      tokenData.tokens.consumeAll()
 
       return state.copy(
         errors = state.errors + CompileError(
@@ -102,10 +102,10 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
     }
 
-    val typeToken = tokenData.currentTokens.consumeFirst()
+    val typeToken = tokenData.tokens.consumeFirst()
 
     if (typeToken.type != TokenType.IDENTIFIER) {
-      tokenData.currentTokens.consumeAll()
+      tokenData.tokens.consumeAll()
 
       return state.copy(
         errors = state.errors + CompileError(

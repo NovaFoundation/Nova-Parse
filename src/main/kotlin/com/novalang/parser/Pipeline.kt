@@ -44,7 +44,7 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
     )
   }
 
-  fun thenExpectToken(action: (tokens: TokenList) -> Token?): Pipeline<ExpectTokenStage, ExpectTokenStageResponse> {
+  fun thenExpectToken(action: (tokens: TokenData) -> Token?): Pipeline<ExpectTokenStage, ExpectTokenStageResponse> {
     return thenDoStage { ExpectTokenStage(getAction = action) }
   }
 
@@ -52,11 +52,11 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
     return thenDoStage { ExpectTokenCountStage(count) }
   }
 
-  fun thenDoAction(action: (state: State, tokens: TokenList) -> DispatcherAction): Pipeline<ActionStage, StageResponse> {
+  fun thenDoAction(action: (state: State, tokens: TokenData) -> DispatcherAction): Pipeline<ActionStage, StageResponse> {
     return thenDoStage { ActionStage(getAction = action) }
   }
 
-  fun thenDoAll(action: (state: State, tokens: TokenList) -> List<BaseStage<*>>): Pipeline<ReducerStage, StageResponse> {
+  fun thenDoAll(action: (state: State, tokens: TokenData) -> List<BaseStage<*>>): Pipeline<ReducerStage, StageResponse> {
     return thenDoStage { ReducerStage(getAction = action) }
   }
 
@@ -69,8 +69,10 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
   }
 
   fun run(dispatcher: Dispatcher, initialState: State, tokenData: TokenData): State {
-    return stages.fold(initialState) { acc, stage ->
-      val response = stage.run(dispatcher, acc, tokenData.currentTokens)
+    tokenData.createSnapshot()
+
+    val state = stages.fold(initialState) { acc, stage ->
+      val response = stage.run(dispatcher, acc, tokenData)
 
       if (!response.success) {
         return@run if (stage.errorMessage != null) {
@@ -81,12 +83,18 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
 
           initialState.copy(errors = initialState.errors + error)
         } else {
+          tokenData.restoreSnapshot()
+
           initialState
         }
       }
 
       response.state
     }
+
+    tokenData.dropSnapshot()
+
+    return state
   }
 
   companion object {
@@ -98,7 +106,7 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
 
 abstract class BaseStage<RESPONSE_TYPE : BaseStageResponse>(
   open var errorMessage: String? = null,
-  open val action: (dispatcher: Dispatcher, state: State, tokens: TokenList) -> RESPONSE_TYPE
+  open val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> RESPONSE_TYPE
 ) {
   private val beforeActions = mutableListOf<() -> Unit>()
   private val afterActions = mutableListOf<(response: RESPONSE_TYPE) -> Unit>()
@@ -122,7 +130,7 @@ abstract class BaseStage<RESPONSE_TYPE : BaseStageResponse>(
     return this
   }
 
-  fun run(dispatcher: Dispatcher, state: State, tokens: TokenList): RESPONSE_TYPE {
+  fun run(dispatcher: Dispatcher, state: State, tokens: TokenData): RESPONSE_TYPE {
     beforeActions.forEach { it() }
 
     val response = action(dispatcher, state, tokens)
@@ -139,12 +147,12 @@ abstract class BaseStage<RESPONSE_TYPE : BaseStageResponse>(
 
 data class Stage(
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenList) -> StageResponse
+  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> StageResponse
 ) : BaseStage<StageResponse>(errorMessage, action)
 
 data class ReducerStage(
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenList) -> StageResponse = { dispatcher, state, tokens ->
+  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> StageResponse = { dispatcher, state, tokens ->
     getAction(state, tokens).fold(StageResponse(state)) { acc, stage ->
       val response = stage.action(dispatcher, acc.state, tokens)
 
@@ -154,12 +162,12 @@ data class ReducerStage(
       )
     }
   },
-  val getAction: (state: State, tokens: TokenList) -> List<BaseStage<*>>
+  val getAction: (state: State, tokens: TokenData) -> List<BaseStage<*>>
 ) : BaseStage<StageResponse>(errorMessage, action)
 
 data class ExpectTokenStage(
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenList) -> ExpectTokenStageResponse = { _, state, tokens ->
+  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> ExpectTokenStageResponse = { _, state, tokens ->
     val token = getAction(tokens)
 
     ExpectTokenStageResponse(
@@ -168,13 +176,13 @@ data class ExpectTokenStage(
       token = token
     )
   },
-  val getAction: (tokens: TokenList) -> Token?
+  val getAction: (tokens: TokenData) -> Token?
 ) : BaseStage<ExpectTokenStageResponse>(errorMessage, action)
 
 data class ExpectTokenCountStage(
   val count: Int,
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenList) -> ExpectTokenCountStageResponse = { _, state, tokens ->
+  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> ExpectTokenCountStageResponse = { _, state, (tokens) ->
     val actual = tokens.unconsumed.size
 
     ExpectTokenCountStageResponse(
@@ -189,7 +197,7 @@ data class ExpectTokenCountStage(
 data class ListStage<T>(
   val items: List<T>,
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenList) -> StageResponse = { _, state, tokens ->
+  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> StageResponse = { _, state, tokens ->
     items.fold(StageResponse(state)) { acc, item ->
       val response = getAction(item, state, tokens)
 
@@ -199,12 +207,12 @@ data class ListStage<T>(
       )
     }
   },
-  val getAction: (item: T, state: State, tokens: TokenList) -> StageResponse
+  val getAction: (item: T, state: State, tokens: TokenData) -> StageResponse
 ) : BaseStage<StageResponse>(errorMessage, action)
 
 data class ActionStage(
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenList) -> StageResponse = { dispatcher, state, tokens ->
+  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> StageResponse = { dispatcher, state, tokens ->
     StageResponse(
       dispatcher.dispatchAndExecute(
         state = state,
@@ -212,7 +220,7 @@ data class ActionStage(
       )
     )
   },
-  val getAction: (state: State, tokens: TokenList) -> DispatcherAction
+  val getAction: (state: State, tokens: TokenData) -> DispatcherAction
 ) : BaseStage<StageResponse>(
   errorMessage,
   action

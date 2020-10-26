@@ -49,8 +49,6 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       return dispatcher.dispatchAndExecute(
         state,
         ReplaceFunctionAction(
-          file = state.currentFile!!,
-          clazz = state.currentClass!!,
           oldFunction = state.currentFunction,
           newFunction = newFunction
         )
@@ -68,8 +66,6 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     return dispatcher.dispatchAndExecute(
       state,
       ReplaceFunctionAction(
-        file = action.file,
-        clazz = action.clazz,
         oldFunction = action.function,
         newFunction = newFunction
       )
@@ -80,28 +76,20 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     lateinit var nameToken: Token
 
     return Pipeline.create()
-      .thenExpectToken { it.consumeFirstIfType(TokenType.IDENTIFIER) }
+      .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.IDENTIFIER) }
       .thenDo { nameToken = it.token!! }
 
-      .thenExpectToken { it.consumeFirstIfType(TokenType.OPENING_PAREN) }
+      .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.OPENING_PAREN) }
 
-      .thenExpectToken { it.consumeAtReverseIndexIfType(1, TokenType.CLOSING_PAREN) }
+      .thenExpectToken { (tokens) -> tokens.consumeAtReverseIndexIfType(1, TokenType.CLOSING_PAREN) }
       .orElseError { "Function missing ending parenthesis" }
 
-      .thenExpectToken { it.consumeAtReverseIndexIfType(0, TokenType.OPENING_BRACE) }
+      .thenExpectToken { (tokens) -> tokens.consumeAtReverseIndexIfType(0, TokenType.OPENING_BRACE) }
       .orElseError { "Function missing declaration scope" }
 
-      .thenDoAction { state, _ ->
-        val function = Function(name = nameToken.value)
+      .thenDoAction { _, _ -> AddFunctionAction(Function(nameToken.value)) }
 
-        AddFunctionAction(
-          file = state.currentFile!!,
-          clazz = state.currentClass!!,
-          function = function
-        )
-      }
-
-      .thenDoAll { _, tokens ->
+      .thenDoAll { _, (tokens) ->
         val parameterTokens = mutableListOf(
           mutableListOf<Token>()
         )
@@ -121,7 +109,7 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
           .map {
             ActionStage { state, _ ->
               val parameterTokenData = TokenData(
-                currentTokens = TokenList(it),
+                tokens = TokenList(it),
                 source = tokenData.source
               )
 
@@ -133,11 +121,7 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
           }
       }
 
-      .thenDoAction { _, _ ->
-        StartScopeAction(
-          tokenData = tokenData
-        )
-      }
+      .thenDoAction { _, tokens -> StartScopeAction(tokens) }
 
       .run(dispatcher, initialState, tokenData)
   }

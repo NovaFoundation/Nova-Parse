@@ -10,7 +10,6 @@ import com.novalang.parser.TokenData
 import com.novalang.parser.TokenType
 import com.novalang.parser.actions.AddAssignmentAction
 import com.novalang.parser.actions.AddElseStatementAction
-import com.novalang.parser.actions.AddFunctionAction
 import com.novalang.parser.actions.AddIfStatementAction
 import com.novalang.parser.actions.AddLocalDeclarationAction
 import com.novalang.parser.actions.ClassParseAction
@@ -53,8 +52,6 @@ class ScopeParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
           scopes = state.scopes + scope
         ),
         action = ReplaceFunctionAction(
-          file = state.currentFile!!,
-          clazz = state.currentClass!!,
           oldFunction = state.currentFunction,
           newFunction = newFunction
         )
@@ -167,7 +164,7 @@ class ScopeParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseFile(state: State, tokenData: TokenData): State {
-    return when (tokenData.currentTokens.unconsumed.first().type) {
+    return when (tokenData.tokens.unconsumed.first().type) {
       TokenType.OPENING_BRACE -> parseScopeStart(state, tokenData)
       TokenType.CLOSING_BRACE -> parseScopeEnd(state, tokenData)
       else -> state
@@ -175,8 +172,8 @@ class ScopeParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseScopeStart(state: State, tokenData: TokenData): State {
-    if (tokenData.currentTokens.unconsumed.size == 1) {
-      tokenData.currentTokens.consumeAll()
+    if (tokenData.tokens.unconsumed.size == 1) {
+      tokenData.tokens.consumeAll()
 
       return dispatcher.dispatchAndExecute(
         state = state,
@@ -190,7 +187,7 @@ class ScopeParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseScopeEnd(state: State, tokenData: TokenData): State {
-    tokenData.currentTokens.consumeFirst()
+    tokenData.tokens.consumeFirst()
 
     if (state.currentClass == null) {
       return state.copy(

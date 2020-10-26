@@ -1,3 +1,7 @@
 package com.novalang.parser.actions
 
-open class DispatcherAction
+import com.novalang.parser.TokenData
+
+abstract class DispatcherAction(
+  open val tokenData: TokenData
+)

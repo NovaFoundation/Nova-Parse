@@ -95,7 +95,7 @@ class IfStatementParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseIfStatement(state: State, tokenData: TokenData): State {
-    val tokens = tokenData.currentTokens
+    val tokens = tokenData.tokens
 
     tokens.consumeFirstIfType(TokenType.IF) ?: return state
     tokens.consumeFirstIfType(TokenType.OPENING_PAREN) ?: return error(state, tokenData, "If statement missing opening parenthesis")

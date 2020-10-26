@@ -36,7 +36,7 @@ class AssignmentParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseAssignment(state: State, action: ScopeParseAction): State {
-    val tokens = action.tokenData.currentTokens
+    val tokens = action.tokenData.tokens
 
     if (tokens.unconsumed.size >= 2 && tokens.unconsumed[1].type == TokenType.EQUALS) {
       val variableNameToken = tokens.consumeFirst()

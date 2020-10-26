@@ -24,6 +24,12 @@ data class TokenList(
     return this
   }
 
+  fun dropSnapshot(): TokenList {
+    snapshots.pop()
+
+    return this
+  }
+
   fun consumeAll(): TokenList {
     _unconsumed.clear()
 

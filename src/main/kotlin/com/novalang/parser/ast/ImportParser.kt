@@ -19,9 +19,9 @@ class ImportParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseFile(state: State, tokenData: TokenData): State {
-    if (tokenData.currentTokens.unconsumed[0].type == TokenType.IMPORT) {
-      if (tokenData.currentTokens.unconsumed.size > 2) {
-        tokenData.currentTokens.consumeAll()
+    if (tokenData.tokens.unconsumed[0].type == TokenType.IMPORT) {
+      if (tokenData.tokens.unconsumed.size > 2) {
+        tokenData.tokens.consumeAll()
 
         return state.copy(
           errors = state.errors + CompileError(
@@ -30,8 +30,8 @@ class ImportParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
           )
         )
       }
-      if (tokenData.currentTokens.unconsumed.size == 1) {
-        tokenData.currentTokens.consumeAll()
+      if (tokenData.tokens.unconsumed.size == 1) {
+        tokenData.tokens.consumeAll()
 
         return state.copy(
           errors = state.errors + CompileError(
@@ -41,10 +41,10 @@ class ImportParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         )
       }
 
-      val importValue = tokenData.currentTokens.unconsumed[1].value
+      val importValue = tokenData.tokens.unconsumed[1].value
 
       if (importValue.first() != '"' || importValue.last() != '"') {
-        tokenData.currentTokens.consumeAll()
+        tokenData.tokens.consumeAll()
 
         return state.copy(
           errors = state.errors + CompileError(
@@ -60,7 +60,7 @@ class ImportParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       )
 
       if (state.currentFile!!.imports.any { it.location == importLocation }) {
-        tokenData.currentTokens.consumeAll()
+        tokenData.tokens.consumeAll()
 
         return state.copy(
           errors = state.errors + CompileError(
@@ -74,7 +74,7 @@ class ImportParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         imports = state.currentFile.imports + value
       )
 
-      tokenData.currentTokens.consumeAll()
+      tokenData.tokens.consumeAll()
 
       return state.copy(
         currentFile = newFile,

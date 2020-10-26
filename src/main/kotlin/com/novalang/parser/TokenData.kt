@@ -1,54 +1,60 @@
 package com.novalang.parser
 
 data class TokenData(
-  val source: String = "",
-  val currentTokens: TokenList = TokenList()
+  val tokens: TokenList = TokenList(),
+  val source: String = ""
 ) {
   fun createSnapshot(): TokenData {
-    currentTokens.createSnapshot()
+    tokens.createSnapshot()
 
     return this
   }
 
   fun restoreSnapshot(): TokenData {
-    currentTokens.restoreSnapshot()
+    tokens.restoreSnapshot()
+
+    return this
+  }
+
+  fun dropSnapshot(): TokenData {
+    tokens.dropSnapshot()
 
     return this
   }
 
   fun unconsumed(): TokenData {
     return copy(
-      currentTokens = currentTokens.copy()
+      tokens = tokens.copy()
     )
   }
 
   fun consumeAll(): TokenData {
     return copy(
-      currentTokens = currentTokens.clone().consumeAll()
+      tokens = tokens.clone().consumeAll()
     )
   }
 
   fun consumeAllButLast(count: Int = 1): TokenData {
     return copy(
-      currentTokens = currentTokens.clone().consumeAllButLast(count)
+      tokens = tokens.clone().consumeAllButLast(count)
     )
   }
 
   fun consumeFirst(): TokenData {
-    val currentTokens = currentTokens.clone()
+    val currentTokens = tokens.clone()
     currentTokens.consumeFirst()
 
     return copy(
-      currentTokens = currentTokens
+      tokens = currentTokens
     )
   }
 
   fun consumeFirst(count: Int = 1): TokenData {
-    val currentTokens = currentTokens.clone()
+    val currentTokens = tokens.clone()
     currentTokens.consumeFirst(count)
 
     return copy(
-      currentTokens = currentTokens
+      tokens = currentTokens
     )
   }
 
@@ -57,6 +63,6 @@ data class TokenData(
   }
 
   fun isConsumed(): Boolean {
-    return currentTokens.isConsumed()
+    return tokens.isConsumed()
   }
 }

@@ -110,7 +110,7 @@ class Tokenizer(
     )
 
     tokenData = tokenData.copy(
-      currentTokens = TokenList(compress(tokens)),
+      tokens = TokenList(compress(tokens)),
       source = line
     )
 

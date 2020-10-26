@@ -1,12 +1,10 @@
 package com.novalang.parser.ast
 
 import com.novalang.CompileError
-import com.novalang.ast.Field
 import com.novalang.ast.Parameter
 import com.novalang.parser.Dispatcher
 import com.novalang.parser.State
 import com.novalang.parser.TokenType
-import com.novalang.parser.actions.AddFieldAction
 import com.novalang.parser.actions.AddParameterAction
 import com.novalang.parser.actions.DispatcherAction
 import com.novalang.parser.actions.ParameterParseAction
@@ -20,7 +18,7 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseParameter(state: State, action: ParameterParseAction): State {
-    return when (action.tokenData.currentTokens.unconsumed[0].type) {
+    return when (action.tokenData.tokens.unconsumed[0].type) {
       TokenType.LET -> parseConstant(state, action)
       TokenType.VAR -> parseVariable(state, action)
       else -> parseConstant(state, action)
@@ -28,7 +26,7 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseConstant(state: State, action: ParameterParseAction): State {
-    val currentTokens = action.tokenData.currentTokens
+    val currentTokens = action.tokenData.tokens
 
     if (currentTokens.unconsumed.first().type == TokenType.LET) {
       currentTokens.consumeFirst()
@@ -38,7 +36,7 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseVariable(state: State, action: ParameterParseAction): State {
-    val currentTokens = action.tokenData.currentTokens
+    val currentTokens = action.tokenData.tokens
 
     if (currentTokens.unconsumed.first().type == TokenType.VAR) {
       currentTokens.consumeFirst()
@@ -48,7 +46,7 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseParameterData(state: State, action: ParameterParseAction, constant: Boolean): State {
-    val currentTokens = action.tokenData.currentTokens
+    val currentTokens = action.tokenData.tokens
 
     val parameterNameToken = currentTokens.consumeFirst()
 

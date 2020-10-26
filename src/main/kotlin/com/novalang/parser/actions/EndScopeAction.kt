@@ -5,5 +5,5 @@ import com.novalang.parser.TokenData
 
 class EndScopeAction(
   val scope: Scope,
-  val tokenData: TokenData
-) : DispatcherAction()
+  override val tokenData: TokenData
+) : DispatcherAction(tokenData)

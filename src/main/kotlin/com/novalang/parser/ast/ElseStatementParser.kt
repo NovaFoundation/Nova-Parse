@@ -1,13 +1,8 @@
 package com.novalang.parser.ast
 
-import com.novalang.CompileError
-import com.novalang.ast.Assignment
 import com.novalang.ast.ElseStatement
-import com.novalang.ast.Literal
-import com.novalang.ast.Variable
 import com.novalang.parser.Dispatcher
 import com.novalang.parser.State
-import com.novalang.parser.TokenData
 import com.novalang.parser.TokenType
 import com.novalang.parser.actions.AddElseStatementAction
 import com.novalang.parser.actions.AddElseStatementIfStatementAction
@@ -38,7 +33,7 @@ class ElseStatementParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseElseStatement(state: State, action: ScopeParseAction): State {
-    val tokens = action.tokenData.currentTokens
+    val tokens = action.tokenData.tokens
 
     tokens.consumeFirstIfType(TokenType.ELSE) ?: return state
 
