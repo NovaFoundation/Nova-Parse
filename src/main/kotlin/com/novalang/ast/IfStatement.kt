@@ -2,7 +2,7 @@ package com.novalang.ast
 
 data class IfStatement(
   val expression: Value,
-  val scope: Scope = Scope(),
+  val scope: Scope? = null,
   override val id: Int = Node.counter++
 ) : Node {
   override fun equals(other: Any?): Boolean {

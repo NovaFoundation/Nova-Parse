@@ -38,15 +38,18 @@ class Tokenizer(
       return value
     }
 
-    val line = input.readLine()
+    var line = input.readLine() ?: return null
+
     lineNumber++
 
-    val content = line?.trim()
+    val commentIndex = line.indexOf("//")
+
+    if (commentIndex != -1) {
+      line = line.substring(0, commentIndex)
+    }
 
     return when {
-      content == null -> null
-      content.startsWith("//") -> nextLineWithContent()
-      !content.isBlank() -> line
+      !line.isBlank() -> line
       else -> nextLineWithContent()
     }
   }

@@ -1,12 +1,28 @@
 package com.novalang.parser
 
+import java.util.Stack
+
 data class TokenList(
   val tokens: List<Token> = emptyList()
 ) {
+  private var snapshots: Stack<List<Token>> = Stack()
   private val _unconsumed = mutableListOf(*tokens.toTypedArray())
 
   val unconsumed: List<Token>
     get() = _unconsumed
+
+  fun createSnapshot(): TokenList {
+    snapshots.push(unconsumed.toList())
+
+    return this
+  }
+
+  fun restoreSnapshot(): TokenList {
+    _unconsumed.clear()
+    _unconsumed.addAll(snapshots.pop())
+
+    return this
+  }
 
   fun consumeAll(): TokenList {
     _unconsumed.clear()
@@ -27,6 +43,36 @@ data class TokenList(
     return consumeFirst(1)[0]
   }
 
+  fun consumeAtIndexIfType(index: Int, type: TokenType): Token? {
+    return consumeAtIndexIf(index) { it.type == type }
+  }
+
+  fun consumeAtIndexIf(index: Int, action: (Token) -> Boolean): Token? {
+    return if (unconsumed.size > index && action(unconsumed[index])) {
+      consumeAt(index)[0]
+    } else {
+      null
+    }
+  }
+
+  fun consumeAtReverseIndexIfType(index: Int, type: TokenType): Token? {
+    return consumeAtReverseIndexIf(index) { it.type == type }
+  }
+
+  fun consumeAtReverseIndexIf(index: Int, action: (Token) -> Boolean): Token? {
+    return consumeAtIndexIf(unconsumed.size - index - 1, action)
+  }
+
+  fun consumeAt(index: Int, count: Int = 1) : List<Token> {
+    val consumed = unconsumed.subList(index, index + count).toList()
+    val first = unconsumed.subList(0, index).toList() + unconsumed.subList(index + count, unconsumed.size).toList()
+
+    _unconsumed.clear()
+    _unconsumed.addAll(first)
+
+    return consumed
+  }
+
   fun consumeFirstIfType(type: TokenType): Token? {
     return consumeFirstIf { it.type == type }
   }
@@ -40,13 +86,7 @@ data class TokenList(
   }
 
   fun consumeFirst(count: Int = 1): List<Token> {
-    val consumed = unconsumed.take(count)
-    val last = unconsumed.subList(count, unconsumed.size).toList()
-
-    _unconsumed.clear()
-    _unconsumed.addAll(last)
-
-    return consumed
+    return consumeAt(0, count)
   }
 
   fun consumeLastIfType(type: TokenType): Token? {
@@ -62,13 +102,7 @@ data class TokenList(
   }
 
   fun consumeLast(count: Int = 1) : List<Token> {
-    val consumed = unconsumed.takeLast(count)
-    val first = unconsumed.subList(0, unconsumed.size - count).toList()
-
-    _unconsumed.clear()
-    _unconsumed.addAll(first)
-
-    return consumed
+    return consumeAt(unconsumed.size - count)
   }
 
   fun unconsumeLast(): Token {

@@ -4,6 +4,18 @@ data class TokenData(
   val source: String = "",
   val currentTokens: TokenList = TokenList()
 ) {
+  fun createSnapshot(): TokenData {
+    currentTokens.createSnapshot()
+
+    return this
+  }
+
+  fun restoreSnapshot(): TokenData {
+    currentTokens.restoreSnapshot()
+
+    return this
+  }
+
   fun unconsumed(): TokenData {
     return copy(
       currentTokens = currentTokens.copy()

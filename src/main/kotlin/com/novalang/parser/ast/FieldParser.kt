@@ -13,12 +13,12 @@ import com.novalang.parser.actions.DispatcherAction
 class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
-      is ClassParseAction -> parseClass(state, action.tokenData)
+      is ClassParseAction -> parseField(state, action.tokenData)
       else -> state
     }
   }
 
-  private fun parseClass(state: State, tokenData: TokenData): State {
+  private fun parseField(state: State, tokenData: TokenData): State {
     return when (tokenData.currentTokens.unconsumed[0].type) {
       TokenType.LET -> parseConstant(state, tokenData)
       TokenType.VAR -> parseVariable(state, tokenData)

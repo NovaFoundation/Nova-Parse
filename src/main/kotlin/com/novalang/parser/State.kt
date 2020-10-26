@@ -3,6 +3,7 @@ package com.novalang.parser
 import com.novalang.CompileError
 import com.novalang.ast.Assignment
 import com.novalang.ast.Class
+import com.novalang.ast.ElseStatement
 import com.novalang.ast.File
 import com.novalang.ast.Function
 import com.novalang.ast.IfStatement
@@ -17,6 +18,8 @@ data class State(
   val currentFunction: Function? = null,
   val currentAssignment: Assignment? = null,
   val currentIfStatement: IfStatement? = null,
+  val currentElseStatement: ElseStatement? = null,
+  val ifStatements: List<IfStatement> = emptyList(),
   val errors: List<CompileError> = emptyList(),
   val imports: Set<Import> = emptySet(),
   val parsedFiles: Set<JavaFile> = emptySet(),

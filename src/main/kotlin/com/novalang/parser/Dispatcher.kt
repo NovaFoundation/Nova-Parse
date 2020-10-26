@@ -39,10 +39,11 @@ class Dispatcher {
     return currentState
   }
 
-  fun next(state: State): State {
+  fun next(initialState: State): State {
+    var state = initialState
     val action = pendingActions.removeFirst()
 
-    val reducedState = reducers.fold(state) { acc, reducer ->
+    state = reducers.fold(state) { acc, reducer ->
       if (action !is ParseAction || (action.tokenData.currentTokens.tokens.isEmpty() || action.tokenData.currentTokens.isNotConsumed())) {
         reducer.reduce(acc, action)
       } else {
@@ -51,14 +52,14 @@ class Dispatcher {
     }
 
     return if (action is ParseAction && action.tokenData.currentTokens.isNotConsumed()) {
-      reducedState.copy(
-        errors = reducedState.errors + CompileError(
+      state.copy(
+        errors = state.errors + CompileError(
           message = "Unconsumed statement",
           tokenData = action.tokenData
         )
       )
     } else {
-      reducedState
+      state
     }
   }
 

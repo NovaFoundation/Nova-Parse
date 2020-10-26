@@ -12,18 +12,31 @@ import com.novalang.parser.actions.AddFunctionAction
 import com.novalang.parser.actions.AddParameterAction
 import com.novalang.parser.actions.ClassParseAction
 import com.novalang.parser.actions.DispatcherAction
+import com.novalang.parser.actions.EndScopeAction
 import com.novalang.parser.actions.ParameterParseAction
 import com.novalang.parser.actions.ReplaceFunctionAction
 import com.novalang.parser.actions.ReplaceScopeAction
+import com.novalang.parser.actions.StartScopeAction
 
 class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
-      is ClassParseAction -> parseClass(state, action.tokenData)
+      is ClassParseAction -> parseFunction(state, action.tokenData)
       is AddParameterAction -> addParameter(state, action)
       is ReplaceScopeAction -> replaceScope(state, action)
+      is EndScopeAction -> endScope(state, action)
       else -> state
     }
+  }
+
+  private fun endScope(state: State, action: EndScopeAction): State {
+    if (state.currentFunction?.scope == action.scope) {
+      return state.copy(
+        currentFunction = null
+      )
+    }
+
+    return state
   }
 
   private fun replaceScope(state: State, action: ReplaceScopeAction): State {
@@ -62,69 +75,42 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     )
   }
 
-  private fun parseClass(initialState: State, tokenData: TokenData): State {
+  private fun parseFunction(initialState: State, tokenData: TokenData): State {
     var state = initialState
+    val tokens = tokenData.currentTokens
 
-    if (
-      tokenData.currentTokens.unconsumed.size > 2 &&
-      tokenData.currentTokens.unconsumed[1].type == TokenType.OPENING_PAREN
-    ) {
-      if (tokenData.currentTokens.unconsumed.last().type != TokenType.OPENING_BRACE) {
-        tokenData.currentTokens.consumeAll()
+    tokenData.createSnapshot()
 
-        return state.copy(
-          errors = state.errors + CompileError(
-            message = "Missing function declaration scope",
-            tokenData = tokenData.unconsumed()
-          )
-        )
-      }
+    val nameToken = tokens.consumeFirstIfType(TokenType.IDENTIFIER) ?: return restoreSnapshot(state, tokenData)
+    tokens.consumeFirstIfType(TokenType.OPENING_PAREN) ?: return restoreSnapshot(state, tokenData)
+    tokens.consumeAtReverseIndexIfType(1, TokenType.CLOSING_PAREN) ?: return error(state, tokenData, "Function missing ending parenthesis")
+    tokens.consumeAtReverseIndexIfType(0, TokenType.OPENING_BRACE) ?: return error(state, tokenData, "Function missing declaration scope")
 
-      val name = tokenData.currentTokens.consumeFirst().value
+    val function = Function(name = nameToken.value)
 
-      // opening paren
-      tokenData.currentTokens.consumeFirst()
+    state = dispatcher.dispatchAndExecute(
+      state,
+      AddFunctionAction(
+        file = state.currentFile!!,
+        clazz = state.currentClass!!,
+        function = function
+      )
+    )
 
+    if (tokens.unconsumed.isNotEmpty()) {
       val parameterTokens = mutableListOf(
         mutableListOf<Token>()
       )
 
-      while (tokenData.currentTokens.isNotConsumed() && tokenData.currentTokens.unconsumed.first().type != TokenType.CLOSING_PAREN) {
-        if (tokenData.currentTokens.unconsumed.first().type == TokenType.COMMA) {
-          tokenData.currentTokens.consumeFirst()
+      while (tokens.isNotConsumed()) {
+        if (tokens.unconsumed.first().type == TokenType.COMMA) {
+          tokens.consumeFirst()
 
           parameterTokens.add(mutableListOf())
         } else {
-          parameterTokens.last().add(tokenData.currentTokens.consumeFirst())
+          parameterTokens.last().add(tokens.consumeFirst())
         }
       }
-
-      // closing paren
-      tokenData.currentTokens.consumeFirst()
-
-      if (tokenData.currentTokens.unconsumed.size > 1) {
-        tokenData.currentTokens.consumeAllButLast()
-
-        return state.copy(
-          errors = state.errors + CompileError(
-            message = "Invalid function declaration",
-            tokenData = tokenData.consumeAllButLast()
-          )
-        )
-      }
-
-      tokenData.currentTokens.consumeFirst()
-
-      val function = Function(name = name)
-
-      state = dispatcher.dispatchAndExecute(
-        state,
-        AddFunctionAction(
-          file = state.currentFile!!,
-          clazz = state.currentClass!!,
-          function = function
-        )
-      )
 
       state = parameterTokens
         .filter { it.isNotEmpty() }
@@ -142,9 +128,14 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
             )
           )
         }
-
-      return state
     }
+
+    state = dispatcher.dispatchAndExecute(
+      state,
+      StartScopeAction(
+        tokenData = tokenData
+      )
+    )
 
     return state
   }
