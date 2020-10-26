@@ -1,8 +1,9 @@
 package com.novalang.parser.ast
 
-import com.novalang.CompileError
 import com.novalang.ast.Function
+import com.novalang.parser.ActionStage
 import com.novalang.parser.Dispatcher
+import com.novalang.parser.Pipeline
 import com.novalang.parser.State
 import com.novalang.parser.Token
 import com.novalang.parser.TokenData
@@ -76,67 +77,68 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun parseFunction(initialState: State, tokenData: TokenData): State {
-    var state = initialState
-    val tokens = tokenData.currentTokens
+    lateinit var nameToken: Token
 
-    tokenData.createSnapshot()
+    return Pipeline.create()
+      .thenExpectToken { it.consumeFirstIfType(TokenType.IDENTIFIER) }
+      .thenDo { nameToken = it.token!! }
 
-    val nameToken = tokens.consumeFirstIfType(TokenType.IDENTIFIER) ?: return restoreSnapshot(state, tokenData)
-    tokens.consumeFirstIfType(TokenType.OPENING_PAREN) ?: return restoreSnapshot(state, tokenData)
-    tokens.consumeAtReverseIndexIfType(1, TokenType.CLOSING_PAREN) ?: return error(state, tokenData, "Function missing ending parenthesis")
-    tokens.consumeAtReverseIndexIfType(0, TokenType.OPENING_BRACE) ?: return error(state, tokenData, "Function missing declaration scope")
+      .thenExpectToken { it.consumeFirstIfType(TokenType.OPENING_PAREN) }
 
-    val function = Function(name = nameToken.value)
+      .thenExpectToken { it.consumeAtReverseIndexIfType(1, TokenType.CLOSING_PAREN) }
+      .orElseError { "Function missing ending parenthesis" }
 
-    state = dispatcher.dispatchAndExecute(
-      state,
-      AddFunctionAction(
-        file = state.currentFile!!,
-        clazz = state.currentClass!!,
-        function = function
-      )
-    )
+      .thenExpectToken { it.consumeAtReverseIndexIfType(0, TokenType.OPENING_BRACE) }
+      .orElseError { "Function missing declaration scope" }
 
-    if (tokens.unconsumed.isNotEmpty()) {
-      val parameterTokens = mutableListOf(
-        mutableListOf<Token>()
-      )
+      .thenDoAction { state, _ ->
+        val function = Function(name = nameToken.value)
 
-      while (tokens.isNotConsumed()) {
-        if (tokens.unconsumed.first().type == TokenType.COMMA) {
-          tokens.consumeFirst()
-
-          parameterTokens.add(mutableListOf())
-        } else {
-          parameterTokens.last().add(tokens.consumeFirst())
-        }
+        AddFunctionAction(
+          file = state.currentFile!!,
+          clazz = state.currentClass!!,
+          function = function
+        )
       }
 
-      state = parameterTokens
-        .filter { it.isNotEmpty() }
-        .fold(state) { acc, tokens ->
-          val parameterTokenData = TokenData(
-            currentTokens = TokenList(tokens),
-            source = tokenData.source
-          )
+      .thenDoAll { _, tokens ->
+        val parameterTokens = mutableListOf(
+          mutableListOf<Token>()
+        )
 
-          dispatcher.dispatchAndExecute(
-            acc,
-            ParameterParseAction(
-              tokenData = parameterTokenData,
-              function = acc.currentFunction!!
-            )
-          )
+        while (tokens.isNotConsumed()) {
+          if (tokens.unconsumed.first().type == TokenType.COMMA) {
+            tokens.consumeFirst()
+
+            parameterTokens.add(mutableListOf())
+          } else {
+            parameterTokens.last().add(tokens.consumeFirst())
+          }
         }
-    }
 
-    state = dispatcher.dispatchAndExecute(
-      state,
-      StartScopeAction(
-        tokenData = tokenData
-      )
-    )
+        parameterTokens
+          .filter { it.isNotEmpty() }
+          .map {
+            ActionStage { state, _ ->
+              val parameterTokenData = TokenData(
+                currentTokens = TokenList(it),
+                source = tokenData.source
+              )
 
-    return state
+              ParameterParseAction(
+                tokenData = parameterTokenData,
+                function = state.currentFunction!!
+              )
+            }
+          }
+      }
+
+      .thenDoAction { _, _ ->
+        StartScopeAction(
+          tokenData = tokenData
+        )
+      }
+
+      .run(dispatcher, initialState, tokenData)
   }
 }

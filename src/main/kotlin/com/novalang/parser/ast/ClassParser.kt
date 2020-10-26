@@ -1,9 +1,10 @@
 package com.novalang.parser.ast
 
-import com.novalang.CompileError
 import com.novalang.ast.Class
 import com.novalang.parser.Dispatcher
+import com.novalang.parser.Pipeline
 import com.novalang.parser.State
+import com.novalang.parser.Token
 import com.novalang.parser.TokenData
 import com.novalang.parser.TokenType
 import com.novalang.parser.actions.AddClassAction
@@ -18,7 +19,7 @@ import com.novalang.replace
 class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
-      is FileParseAction -> parseFile(state, action.tokenData)
+      is FileParseAction -> parseClass(state, action.tokenData)
       is AddFieldAction -> addField(state, action)
       is AddFunctionAction -> addFunction(state, action)
       is ReplaceFunctionAction -> replaceFunction(state, action)
@@ -58,70 +59,32 @@ class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     )
   }
 
-  private fun parseFile(state: State, tokenData: TokenData): State {
-    if (tokenData.currentTokens.unconsumed[0].type == TokenType.CLASS) {
-      if (tokenData.currentTokens.unconsumed.size < 3) {
-        tokenData.currentTokens.consumeAll()
+  private fun parseClass(initialState: State, tokenData: TokenData): State {
+    lateinit var nameToken: Token
 
-        return state.copy(
-          errors = state.errors + CompileError(
-            message = "Class name not specified",
-            tokenData = tokenData.unconsumed()
-          )
-        )
-      }
-      if (tokenData.currentTokens.unconsumed.size > 3) {
-        tokenData.currentTokens.consumeAll()
+    return Pipeline.create()
+      .thenExpectToken { it.consumeFirstIfType(TokenType.CLASS) }
 
-        return state.copy(
-          errors = state.errors + CompileError(
-            message = "Too many arguments given to class declaration",
-            tokenData = tokenData.unconsumed()
-          )
-        )
-      }
-      if (tokenData.currentTokens.unconsumed[2].type != TokenType.OPENING_BRACE) {
-        tokenData.currentTokens.consumeAll()
+      .thenExpectToken { it.consumeAtReverseIndexIfType(0, TokenType.OPENING_BRACE) }
+      .orElseError { "Class missing declaration scope" }
 
-        return state.copy(
-          errors = state.errors + CompileError(
-            message = "Class declaration missing opening curly brace",
-            tokenData = tokenData.unconsumed()
-          )
-        )
-      }
+      .thenExpectTokenCount(1)
+      .orElseError { if (it.actual > it.expected) "Invalid class declaration" else "Class missing name" }
 
-      val classNameToken = tokenData.currentTokens.unconsumed[1]
+      .thenExpectToken { it.consumeFirstIfType(TokenType.IDENTIFIER) }
+      .thenDo { nameToken = it.token!! }
+      .orElseError { "Invalid class name" }
 
-      if (classNameToken.type != TokenType.IDENTIFIER) {
-        tokenData.currentTokens.consumeAll()
+      .thenSetState { it.copy(currentClass = Class(nameToken.value)) }
 
-        return state.copy(
-          errors = state.errors + CompileError(
-            message = "Invalid class name \"${classNameToken.value}\"",
-            tokenData = tokenData.unconsumed()
-          )
-        )
-      }
-
-      val value = Class(
-        name = classNameToken.value
-      )
-
-      tokenData.currentTokens.consumeAll()
-
-      return dispatcher.dispatchAndExecute(
-        state.copy(
-          currentClass = value
-        ),
+      .thenDoAction { state, _ ->
         AddClassAction(
           file = state.currentFile!!,
-          newClass = value
+          newClass = state.currentClass!!
         )
-      )
-    }
+      }
 
-    return state
+      .run(dispatcher, initialState, tokenData)
   }
 
   private fun replaceFunction(initialState: State, action: ReplaceFunctionAction): State {
