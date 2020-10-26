@@ -88,27 +88,31 @@ class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   }
 
   private fun replaceFunction(initialState: State, action: ReplaceFunctionAction): State {
-    val newClass = action.clazz.copy(
-      functions = action.clazz.functions.replace(action.oldFunction, action.newFunction)
-    )
+    return Pipeline.create()
+      .thenDoAction { _, _ ->
+        val newClass = action.clazz.copy(
+          functions = action.clazz.functions.replace(action.oldFunction, action.newFunction)
+        )
 
-    val state = dispatcher.dispatchAndExecute(
-      initialState,
-      ReplaceClassAction(
-        file = action.file,
-        oldClass = action.clazz,
-        newClass = newClass
-      )
-    )
+        ReplaceClassAction(
+          file = action.file,
+          oldClass = action.clazz,
+          newClass = newClass
+        )
+      }
 
-    val currentFunction = if (action.oldFunction == state.currentFunction) {
-      action.newFunction
-    } else {
-      state.currentFunction
-    }
+      .thenSetState { state ->
+        val currentFunction = if (action.oldFunction == state.currentFunction) {
+          action.newFunction
+        } else {
+          state.currentFunction
+        }
 
-    return state.copy(
-      currentFunction = currentFunction
-    )
+        state.copy(
+          currentFunction = currentFunction
+        )
+      }
+
+      .run(dispatcher, initialState, TokenData())
   }
 }
