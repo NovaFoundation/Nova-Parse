@@ -67,14 +67,14 @@ class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.CLASS) }
 
       .thenExpectToken { (tokens) -> tokens.consumeAtReverseIndexIfType(0, TokenType.OPENING_BRACE) }
-      .orElseError { "Class missing declaration scope" }
+      .orElseError("Class missing declaration scope")
 
       .thenExpectTokenCount(1)
-      .orElseError { if (it.actual > it.expected) "Invalid class declaration" else "Class missing name" }
+      .orElseError { _, _, response -> if (response.actual > response.expected) "Invalid class declaration" else "Class missing name" }
 
       .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.IDENTIFIER) }
-      .thenDo { nameToken = it.token!! }
-      .orElseError { "Invalid class name" }
+      .thenDoWithResponse { nameToken = it.token!! }
+      .orElseError("Invalid class name")
 
       .thenSetState { it.copy(currentClass = Class(nameToken.value)) }
 

@@ -77,15 +77,15 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
 
     return Pipeline.create()
       .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.IDENTIFIER) }
-      .thenDo { nameToken = it.token!! }
+      .thenDoWithResponse { nameToken = it.token!! }
 
       .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.OPENING_PAREN) }
 
       .thenExpectToken { (tokens) -> tokens.consumeAtReverseIndexIfType(1, TokenType.CLOSING_PAREN) }
-      .orElseError { "Function missing ending parenthesis" }
+      .orElseError("Function missing ending parenthesis")
 
       .thenExpectToken { (tokens) -> tokens.consumeAtReverseIndexIfType(0, TokenType.OPENING_BRACE) }
-      .orElseError { "Function missing declaration scope" }
+      .orElseError("Function missing declaration scope")
 
       .thenDoAction { _, _ -> AddFunctionAction(Function(nameToken.value)) }
 
