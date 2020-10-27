@@ -157,7 +157,7 @@ data class ReducerStage(
       val response = stage.action(dispatcher, acc.state, tokens)
 
       acc.copy(
-        state = acc.state,
+        state = response.state,
         success = acc.success && response.success
       )
     }

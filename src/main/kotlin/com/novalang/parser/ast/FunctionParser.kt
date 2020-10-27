@@ -23,7 +23,7 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is ClassParseAction -> parseFunction(state, action.tokenData)
-      is AddParameterAction -> addParameter(state, action)
+      is AddParameterAction -> addParameter(action).run(dispatcher, state, action.tokenData)
       is ReplaceScopeAction -> replaceScope(state, action)
       is EndScopeAction -> endScope(state, action)
       else -> state
@@ -58,18 +58,18 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     return state
   }
 
-  private fun addParameter(state: State, action: AddParameterAction): State {
-    val newFunction = action.function.copy(
-      parameters = action.function.parameters + action.parameter
-    )
+  private fun addParameter(action: AddParameterAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenDoAction { state, _ ->
+        val newFunction = state.currentFunction!!.copy(
+          parameters = state.currentFunction.parameters + action.parameter
+        )
 
-    return dispatcher.dispatchAndExecute(
-      state,
-      ReplaceFunctionAction(
-        oldFunction = action.function,
-        newFunction = newFunction
-      )
-    )
+        ReplaceFunctionAction(
+          oldFunction = state.currentFunction,
+          newFunction = newFunction
+        )
+      }
   }
 
   private fun parseFunction(initialState: State, tokenData: TokenData): State {

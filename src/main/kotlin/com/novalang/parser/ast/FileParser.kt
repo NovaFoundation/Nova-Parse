@@ -64,21 +64,15 @@ class FileParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     )
 
     state = dispatcher.dispatchAndExecute(
-      initialState,
+      state,
       ReplaceFileAction(
         oldFile = state.currentFile!!,
         newFile = newFile
       )
     )
 
-    val currentClass = if (action.oldClass == state.currentClass) {
-      action.newClass
-    } else {
-      state.currentClass
-    }
-
     return state.copy(
-      currentClass = currentClass
+      currentClass = action.newClass
     )
   }
 

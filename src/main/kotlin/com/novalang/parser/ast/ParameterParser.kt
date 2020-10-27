@@ -71,9 +71,6 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       return dispatcher.dispatchAndExecute(
         state,
         AddParameterAction(
-          file = state.currentFile!!,
-          clazz = state.currentClass!!,
-          function = action.function,
           parameter = newParameter
         )
       )
@@ -111,12 +108,7 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
 
     return dispatcher.dispatchAndExecute(
       state,
-      AddParameterAction(
-        file = state.currentFile!!,
-        clazz = state.currentClass!!,
-        function = action.function,
-        parameter = newParameter
-      )
+      AddParameterAction(newParameter)
     )
   }
 }

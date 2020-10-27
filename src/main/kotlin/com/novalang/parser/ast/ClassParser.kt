@@ -99,16 +99,6 @@ class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         )
       }
 
-      .thenSetState { state ->
-        val currentFunction = if (action.oldFunction == state.currentFunction) {
-          action.newFunction
-        } else {
-          state.currentFunction
-        }
-
-        state.copy(
-          currentFunction = currentFunction
-        )
-      }
+      .thenSetState { state -> state.copy(currentFunction = action.newFunction) }
   }
 }
