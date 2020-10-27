@@ -1,9 +1,10 @@
 package com.novalang.parser.ast
 
-import com.novalang.CompileError
 import com.novalang.ast.Parameter
 import com.novalang.parser.Dispatcher
+import com.novalang.parser.Pipeline
 import com.novalang.parser.State
+import com.novalang.parser.Token
 import com.novalang.parser.TokenType
 import com.novalang.parser.actions.AddParameterAction
 import com.novalang.parser.actions.DispatcherAction
@@ -32,7 +33,7 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       currentTokens.consumeFirst()
     }
 
-    return parseParameterData(state, action, true)
+    return parseParameterData(true).run(dispatcher, state, action.tokenData)
   }
 
   private fun parseVariable(state: State, action: ParameterParseAction): State {
@@ -42,73 +43,49 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       currentTokens.consumeFirst()
     }
 
-    return parseParameterData(state, action, false)
+    return parseParameterData(false).run(dispatcher, state, action.tokenData)
   }
 
-  private fun parseParameterData(state: State, action: ParameterParseAction, constant: Boolean): State {
-    val currentTokens = action.tokenData.tokens
+  private fun parseParameterData(constant: Boolean): Pipeline<*, *> {
+    lateinit var nameToken: Token
+    lateinit var typeToken: Token
 
-    val parameterNameToken = currentTokens.consumeFirst()
+    return Pipeline.create()
+      .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.IDENTIFIER) }
+      .orElseError { "Missing parameter name" }
+      .thenDo { nameToken = it.token!! }
 
-    if (parameterNameToken.type != TokenType.IDENTIFIER) {
-      currentTokens.consumeAll()
+      .thenCheck { _, (tokens) -> tokens.isConsumed() }
 
-      return state.copy(
-        errors = state.errors + CompileError(
-          message = "Missing parameter name",
-          tokenData = action.tokenData.unconsumed()
-        )
-      )
-    }
+      .ifTrue {
+        it.thenDoAction { _, _ ->
+          AddParameterAction(
+            parameter = Parameter(
+              name = nameToken.value,
+              type = null,
+              constant = constant
+            )
+          )
+        }
+      }
 
-    if (currentTokens.isConsumed()) {
-      val newParameter = Parameter(
-        name = parameterNameToken.value,
-        type = null,
-        constant = constant
-      )
+      .ifFalse {
+        it.thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.COLON) }
+          .orElseError { "Invalid parameter type declaration" }
 
-      return dispatcher.dispatchAndExecute(
-        state,
-        AddParameterAction(
-          parameter = newParameter
-        )
-      )
-    }
+          .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.IDENTIFIER) }
+          .thenDo { typeToken = it.token!! }
+          .orElseError { "Invalid parameter type" }
 
-    if (currentTokens.consumeFirst().type != TokenType.COLON || currentTokens.unconsumed.size > 1) {
-      currentTokens.consumeAll()
-
-      return state.copy(
-        errors = state.errors + CompileError(
-          message = "Invalid parameter type declaration",
-          tokenData = action.tokenData.unconsumed()
-        )
-      )
-    }
-
-    val typeToken = currentTokens.consumeFirst()
-
-    if (typeToken.type != TokenType.IDENTIFIER) {
-      currentTokens.consumeAll()
-
-      return state.copy(
-        errors = state.errors + CompileError(
-          message = "Invalid parameter type",
-          tokenData = action.tokenData.unconsumed()
-        )
-      )
-    }
-
-    val newParameter = Parameter(
-      name = parameterNameToken.value,
-      type = typeToken.value,
-      constant = constant
-    )
-
-    return dispatcher.dispatchAndExecute(
-      state,
-      AddParameterAction(newParameter)
-    )
+          .thenDoAction { _, _ ->
+            AddParameterAction(
+              Parameter(
+                name = nameToken.value,
+                type = typeToken.value,
+                constant = constant
+              )
+            )
+          }
+      }
   }
 }
