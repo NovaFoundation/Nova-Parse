@@ -2,6 +2,8 @@ package com.novalang.parser
 
 import com.novalang.CompileError
 import com.novalang.parser.actions.DispatcherAction
+import com.novalang.replace
+import java.lang.RuntimeException
 
 class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageResponse> {
   private val stages: List<BaseStage<*>>
@@ -66,6 +68,51 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
     }
 
     return this
+  }
+
+  fun thenCheck(action: (state: State, tokens: TokenData) -> Any?): Pipeline<ConditionStage, StageResponse> {
+    val stage = ConditionStage { state, tokens ->
+      action(state, tokens)
+    }
+
+    return Pipeline(
+      stages = stages + stage,
+      lastStage = stage
+    )
+  }
+
+  fun ifEquals(expectedValue: Any?, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
+    if (lastStage !is ConditionStage) {
+      throw RuntimeException("Must be in a conditional to check ifEquals")
+    }
+
+    val conditionStage = lastStage as ConditionStage
+
+    val condition = { value: Any? ->
+      if (value == expectedValue) {
+        action(create())
+      } else {
+        null
+      }
+    }
+
+    val stage = ConditionStage(
+      conditions = conditionStage.conditions + condition,
+      getAction = conditionStage.getAction
+    )
+
+    return Pipeline(
+      stages = stages.replace(lastStage, stage),
+      lastStage = stage
+    )
+  }
+
+  fun ifTrue(action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
+    return ifEquals(true, action)
+  }
+
+  fun ifFalse(action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
+    return ifEquals(false, action)
   }
 
   fun run(dispatcher: Dispatcher, initialState: State, tokenData: TokenData): State {
@@ -163,6 +210,22 @@ data class ReducerStage(
     }
   },
   val getAction: (state: State, tokens: TokenData) -> List<BaseStage<*>>
+) : BaseStage<StageResponse>(errorMessage, action)
+
+data class ConditionStage(
+  val conditions: List<(value: Any?) -> Pipeline<*, *>?> = emptyList(),
+  override var errorMessage: String? = null,
+  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> StageResponse = { dispatcher, state, tokens ->
+    val value = getAction(state, tokens)
+
+    val pipelines = conditions.mapNotNull { it(value) }
+
+    StageResponse(
+      state = pipelines.fold(state) { acc, pipeline -> pipeline.run(dispatcher, acc, tokens) },
+      success = true
+    )
+  },
+  val getAction: (state: State, tokens: TokenData) -> Any?
 ) : BaseStage<StageResponse>(errorMessage, action)
 
 data class ExpectTokenStage(
