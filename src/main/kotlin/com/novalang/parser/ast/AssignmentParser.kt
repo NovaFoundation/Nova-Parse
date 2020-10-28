@@ -1,11 +1,12 @@
 package com.novalang.parser.ast
 
-import com.novalang.CompileError
 import com.novalang.ast.Assignment
 import com.novalang.ast.Literal
 import com.novalang.ast.Variable
 import com.novalang.parser.Dispatcher
+import com.novalang.parser.Pipeline
 import com.novalang.parser.State
+import com.novalang.parser.Token
 import com.novalang.parser.TokenType
 import com.novalang.parser.actions.AddAssignmentAction
 import com.novalang.parser.actions.AddAssignmentValueAction
@@ -16,56 +17,44 @@ import com.novalang.parser.actions.ScopeParseAction
 class AssignmentParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
-      is ScopeParseAction -> parseAssignment(state, action)
-      is AddAssignmentValueAction -> addAssignmentValue(state, action)
+      is ScopeParseAction -> parseAssignment(action).run(dispatcher, state, action.tokenData)
+      is AddAssignmentValueAction -> addAssignmentValue(action).run(dispatcher, state, action.tokenData)
       else -> state
     }
   }
 
-  private fun addAssignmentValue(state: State, action: AddAssignmentValueAction): State {
-    return dispatcher.dispatchAndExecute(
-      state.copy(
-        currentAssignment = null
-      ),
-      AddAssignmentAction(
-        file = state.currentFile!!,
-        clazz = state.currentClass!!,
-        assignment = state.currentAssignment!!.copy(assignmentValue = action.value)
-      )
-    )
+  private fun addAssignmentValue(action: AddAssignmentValueAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenDoAction { state, _ ->
+        AddAssignmentAction(
+          file = state.currentFile!!,
+          clazz = state.currentClass!!,
+          assignment = state.currentAssignment!!.copy(assignmentValue = action.value)
+        )
+      }
+
+      .thenSetState { state -> state.copy(currentAssignment = null) }
   }
 
-  private fun parseAssignment(state: State, action: ScopeParseAction): State {
-    val tokens = action.tokenData.tokens
+  private fun parseAssignment(action: ScopeParseAction): Pipeline<*, *> {
+    lateinit var variableNameToken: Token
 
-    if (tokens.unconsumed.size >= 2 && tokens.unconsumed[1].type == TokenType.EQUALS) {
-      val variableNameToken = tokens.consumeFirst()
+    return Pipeline.create()
+      .thenExpectToken { (tokens) -> tokens.consumeAtIndexIfType(1, TokenType.EQUALS) }
 
-      if (variableNameToken.type != TokenType.IDENTIFIER) {
-        tokens.consumeAll()
+      .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.IDENTIFIER) }
+      .orElseError("Invalid variable name for assignment")
+      .thenDoWithResponse { variableNameToken = it.token!! }
 
-        return state.copy(
-          errors = state.errors + CompileError(
-            message = "Invalid variable name for assignment",
-            tokenData = action.tokenData.unconsumed()
+      .thenSetState { state ->
+        state.copy(
+          currentAssignment = Assignment(
+            variable = Variable(variableNameToken.value),
+            assignmentValue = Literal.NULL
           )
         )
       }
 
-      // equals sign
-      tokens.consumeFirst()
-
-      val assignment = Assignment(
-        variable = Variable(variableNameToken.value),
-        assignmentValue = Literal.NULL
-      )
-
-      return dispatcher.dispatchAndExecute(
-        state = state.copy(currentAssignment = assignment),
-        action = AssignmentValueParseAction(tokenData = action.tokenData)
-      )
-    }
-
-    return state
+      .thenDoAction { _, _ -> AssignmentValueParseAction(tokenData = action.tokenData) }
   }
 }
