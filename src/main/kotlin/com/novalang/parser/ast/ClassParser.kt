@@ -32,13 +32,13 @@ class ClassParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
 
   private fun addField(action: AddFieldAction): Pipeline<*, *> {
     return Pipeline.create()
-      .thenDoAction { _, _ ->
-        val newClass = action.clazz.copy(
-          fields = action.clazz.fields + action.field
+      .thenDoAction { state, _ ->
+        val newClass = state.currentClass!!.copy(
+          fields = state.currentClass.fields + action.field
         )
 
         ReplaceClassAction(
-          oldClass = action.clazz,
+          oldClass = state.currentClass,
           newClass = newClass
         )
       }

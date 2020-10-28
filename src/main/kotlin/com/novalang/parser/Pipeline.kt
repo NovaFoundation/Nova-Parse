@@ -3,19 +3,18 @@ package com.novalang.parser
 import com.novalang.CompileError
 import com.novalang.parser.actions.DispatcherAction
 import com.novalang.replace
-import java.lang.RuntimeException
 
-class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageResponse> {
-  private val stages: List<BaseStage<*>>
-  private lateinit var lastStage: STAGE_TYPE
+open class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageResponse> {
+  protected val stages: List<BaseStage<*>>
+  protected lateinit var lastStage: STAGE_TYPE
 
-  private constructor(
+  protected constructor(
     stages: List<BaseStage<*>>
   ) {
     this.stages = stages
   }
 
-  private constructor(
+  protected constructor(
     stages: List<BaseStage<*>>,
     lastStage: STAGE_TYPE
   ) : this(stages) {
@@ -31,20 +30,22 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
     )
   }
 
-  fun thenDoWithResponse(action: (response: RESPONSE_TYPE) -> Unit): Pipeline<STAGE_TYPE, RESPONSE_TYPE> {
+  fun thenDoWithResponse(action: (response: RESPONSE_TYPE) -> Unit): Pipeline<Stage, StageResponse> {
     return thenDo { _, _, response -> action(response!!) }
   }
 
-  fun thenDo(action: (state: State, tokens: TokenData, response: RESPONSE_TYPE?) -> Unit): Pipeline<STAGE_TYPE, RESPONSE_TYPE> {
-    if (::lastStage.isInitialized) {
-      lastStage.after { state, tokens, response -> action(state, tokens, response) }
-    }
+  fun thenDo(action: (state: State, tokens: TokenData, response: RESPONSE_TYPE?) -> Unit): Pipeline<Stage, StageResponse> {
+    return thenDoStage {
+      Stage { _, lastResponse, state, tokens ->
+        action(state, tokens, lastResponse as RESPONSE_TYPE?)
 
-    return this
+        StageResponse(state)
+      }
+    }
   }
 
   fun thenSetState(action: (state: State) -> State): Pipeline<Stage, StageResponse> {
-    val newStage = Stage { _, state, _ -> StageResponse(action(state)) }
+    val newStage = Stage { _, _, state, _ -> StageResponse(action(state)) }
 
     return Pipeline(
       stages = stages + newStage,
@@ -64,7 +65,7 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
     return thenDoStage { ActionStage(getAction = action) }
   }
 
-  fun thenDoAll(action: (state: State, tokens: TokenData) -> List<BaseStage<*>>): Pipeline<ReducerStage, StageResponse> {
+  fun thenDoAll(action: (state: State, tokens: TokenData) -> List<BaseStage<*>>): Pipeline<ReducerStage, BaseStageResponse> {
     return thenDoStage { ReducerStage(getAction = action) }
   }
 
@@ -73,204 +74,40 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
   }
 
   fun orElseError(action: (state: State, tokens: TokenData, response: RESPONSE_TYPE) -> String): Pipeline<STAGE_TYPE, RESPONSE_TYPE> {
-    lastStage.after { state, tokens, response ->
-      lastStage.errorMessage = action(state, tokens, response)
+    val stage = PassthroughStage { lastResponse, state, tokens ->
+      lastStage.errorMessage = action(state, tokens, lastResponse as RESPONSE_TYPE)
+
+      lastResponse
     }
 
-    return this
+    return Pipeline(
+      stages = stages + stage,
+      lastStage = lastStage
+    )
   }
 
-  fun thenCheck(action: (state: State, tokens: TokenData) -> Any?): Pipeline<ConditionStage, StageResponse> {
+  fun thenCheck(action: (state: State, tokens: TokenData) -> Any?): ConditionalPipeline {
     val stage = ConditionStage { state, tokens ->
       action(state, tokens)
     }
 
-    return Pipeline(
+    return ConditionalPipeline(
       stages = stages + stage,
       lastStage = stage
     )
   }
 
-  fun ifEqualsAnyThenDo(vararg expectedValues: Any?, action: (state: State, tokens: TokenData) -> Unit): Pipeline<ConditionStage, StageResponse> {
-    return ifTrueThenDo({ value -> expectedValues.any { it == value } }, action)
-  }
-
-  fun ifEqualsThenDo(expectedValue: Any?, action: (state: State, tokens: TokenData) -> Unit): Pipeline<ConditionStage, StageResponse> {
-    return ifEqualsThenDo({ expectedValue }, action)
-  }
-
-  fun ifEqualsThenDo(expectedValue: () -> Any?, action: (state: State, tokens: TokenData) -> Unit): Pipeline<ConditionStage, StageResponse> {
-    return ifEquals(expectedValue) {
-      it.thenDo { state, tokens, _ -> action(state, tokens) }
-    }
-  }
-
-  fun ifEquals(expectedValue: Any?, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
-    return ifEquals({ expectedValue }, action)
-  }
-
-  fun ifEquals(expectedValue: () -> Any?, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
-    return ifTrue({ it == expectedValue() }, action)
-  }
-
-  fun ifNotEquals(expectedValue: Any?, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
-    return ifTrue({ it != expectedValue }, action)
-  }
-
-  fun ifTrueThenDo(conditionCheck: (value: Any?) -> Boolean, action: (state: State, tokens: TokenData) -> Unit): Pipeline<ConditionStage, StageResponse> {
-    return ifTrue(conditionCheck) {
-      it.thenDo { state, tokens, _ -> action(state, tokens) }
-    }
-  }
-
-  fun ifTrueThenDo(action: (state: State, tokens: TokenData) -> Unit): Pipeline<ConditionStage, StageResponse> {
-    return ifTrue {
-      it.thenDo { state, tokens, _ -> action(state, tokens) }
-    }
-  }
-
-  fun ifTrueThenDoAction(action: (state: State, tokens: TokenData) -> DispatcherAction): Pipeline<ConditionStage, StageResponse> {
-    return ifTrue {
-      it.thenDoAction(action)
-    }
-  }
-
-  fun ifTrueThenSetState(action: (state: State) -> State): Pipeline<ConditionStage, StageResponse> {
-    return ifTrue {
-      it.thenSetState(action)
-    }
-  }
-
-  fun ifTrue(conditionCheck: (value: Any?) -> Boolean, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
-    if (lastStage !is ConditionStage) {
-      throw RuntimeException("Must be in a conditional to check ifTrue")
+  fun run(dispatcher: Dispatcher, initialState: State, tokenData: TokenData, snapshot: Boolean = true): State {
+    if (snapshot) {
+      tokenData.createSnapshot()
     }
 
-    val conditionStage = lastStage as ConditionStage
-
-    val condition = { value: Any? ->
-      if (conditionCheck(value)) {
-        action(create())
-      } else {
-        null
-      }
-    }
-
-    val stage = ConditionStage(
-      conditions = conditionStage.conditions + condition,
-      elseConditions = conditionStage.elseConditions,
-      getAction = conditionStage.getAction
-    )
-
-    return Pipeline(
-      stages = stages.replace(lastStage, stage),
-      lastStage = stage
-    )
-  }
-
-  fun ifFalse(conditionCheck: (value: Any?) -> Boolean, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
-    if (lastStage !is ConditionStage) {
-      throw RuntimeException("Must be in a conditional to check ifFalse")
-    }
-
-    val conditionStage = lastStage as ConditionStage
-
-    val condition = { value: Any? ->
-      if (!conditionCheck(value)) {
-        action(create())
-      } else {
-        null
-      }
-    }
-
-    val stage = ConditionStage(
-      conditions = conditionStage.conditions + condition,
-      elseConditions = conditionStage.elseConditions,
-      getAction = conditionStage.getAction
-    )
-
-    return Pipeline(
-      stages = stages.replace(lastStage, stage),
-      lastStage = stage
-    )
-  }
-
-  fun ifTrue(action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
-    return ifEquals(true, action)
-  }
-
-  fun ifFalse(action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
-    return ifEquals(false, action)
-  }
-
-  fun ifFalseThenDo(conditionCheck: (value: Any?) -> Boolean, action: (state: State, tokens: TokenData) -> Unit): Pipeline<ConditionStage, StageResponse> {
-    return ifFalse(conditionCheck) {
-      it.thenDo { state, tokens, _ -> action(state, tokens) }
-    }
-  }
-
-  fun ifFalseThenDo(action: (state: State, tokens: TokenData) -> Unit): Pipeline<ConditionStage, StageResponse> {
-    return ifFalse {
-      it.thenDo { state, tokens, _ -> action(state, tokens) }
-    }
-  }
-
-  fun ifFalseThenDoAction(action: (state: State, tokens: TokenData) -> DispatcherAction): Pipeline<ConditionStage, StageResponse> {
-    return ifFalse {
-      it.thenDoAction(action)
-    }
-  }
-
-  fun ifFalseThenSetState(action: (state: State) -> State): Pipeline<ConditionStage, StageResponse> {
-    return ifFalse {
-      it.thenSetState(action)
-    }
-  }
-
-  fun orElseExit(): Pipeline<ConditionStage, StageResponse> {
-    return orElse {
-      create()
-        .thenDo { state, _, _ ->
-          StageResponse(
-            state = state,
-            success = false
-          )
-        }
-    }
-  }
-
-  fun orElseThenDo(action: (state: State, tokens: TokenData) -> Unit): Pipeline<ConditionStage, StageResponse> {
-    return orElse { create().thenDo { state, tokens, _ -> action(state, tokens) } }
-  }
-
-  fun orElse(action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
-    if (lastStage !is ConditionStage) {
-      throw RuntimeException("Must be in a conditional to check orElse")
-    }
-
-    val conditionStage = lastStage as ConditionStage
-
-    val condition = {
-      action(create())
-    }
-
-    val stage = ConditionStage(
-      conditions = conditionStage.conditions,
-      elseConditions = conditionStage.elseConditions + condition,
-      getAction = conditionStage.getAction
-    )
-
-    return Pipeline(
-      stages = stages.replace(lastStage, stage),
-      lastStage = stage
-    )
-  }
-
-  fun run(dispatcher: Dispatcher, initialState: State, tokenData: TokenData): State {
-    tokenData.createSnapshot()
+    val responses = mutableListOf<BaseStageResponse>()
 
     val state = stages.fold(initialState) { acc, stage ->
-      val response = stage.run(dispatcher, acc, tokenData)
+      val lastResponse = responses.lastOrNull() ?: StageResponse(acc)
+      val response = stage.run(dispatcher, lastResponse, acc, tokenData)
+      responses.add(response)
 
       if (!response.success) {
         return@run if (stage.errorMessage != null) {
@@ -281,7 +118,9 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
 
           initialState.copy(errors = initialState.errors + error)
         } else {
-          tokenData.restoreSnapshot()
+          if (snapshot) {
+            tokenData.restoreSnapshot()
+          }
 
           initialState
         }
@@ -290,7 +129,9 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
       response.state
     }
 
-    tokenData.dropSnapshot()
+    if (snapshot) {
+      tokenData.dropSnapshot()
+    }
 
     return state
   }
@@ -299,75 +140,227 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
     fun create(): Pipeline<*, *> {
       return Pipeline<BaseStage<BaseStageResponse>, BaseStageResponse>(emptyList())
     }
+
+    @JvmStatic
+    protected fun create(lastStage: BaseStage<*>): Pipeline<*, *> {
+      return Pipeline<BaseStage<BaseStageResponse>, BaseStageResponse>(emptyList(), lastStage as BaseStage<BaseStageResponse>)
+    }
+  }
+}
+
+class ConditionalPipeline(
+  stages: List<BaseStage<*>>,
+  lastStage: ConditionStage
+) : Pipeline<ConditionStage, StageResponse>(
+  stages,
+  lastStage
+) {
+  fun ifEqualsAnyThenDo(vararg expectedValues: Any?, action: (state: State, tokens: TokenData) -> Unit): ConditionalPipeline {
+    return ifTrueThenDo({ value -> expectedValues.any { it == value } }, action)
+  }
+
+  fun ifEqualsThenDo(expectedValue: Any?, action: (state: State, tokens: TokenData) -> Unit): ConditionalPipeline {
+    return ifEqualsThenDo({ expectedValue }, action)
+  }
+
+  fun ifEqualsThenDo(expectedValue: () -> Any?, action: (state: State, tokens: TokenData) -> Unit): ConditionalPipeline {
+    return ifEquals(expectedValue) {
+      it.thenDo { state, tokens, _ -> action(state, tokens) }
+    }
+  }
+
+  fun ifEquals(expectedValue: Any?, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): ConditionalPipeline {
+    return ifEquals({ expectedValue }, action)
+  }
+
+  fun ifEquals(expectedValue: () -> Any?, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): ConditionalPipeline {
+    return ifTrue({ it == expectedValue() }, action)
+  }
+
+  fun ifNotEquals(expectedValue: Any?, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): ConditionalPipeline {
+    return ifTrue({ it != expectedValue }, action)
+  }
+
+  fun ifTrueThenDo(conditionCheck: (value: Any?) -> Boolean, action: (state: State, tokens: TokenData) -> Unit): ConditionalPipeline {
+    return ifTrue(conditionCheck) {
+      it.thenDo { state, tokens, _ -> action(state, tokens) }
+    }
+  }
+
+  fun ifTrueThenDo(action: (state: State, tokens: TokenData) -> Unit): ConditionalPipeline {
+    return ifTrue {
+      it.thenDo { state, tokens, _ -> action(state, tokens) }
+    }
+  }
+
+  fun ifTrueThenDoAction(action: (state: State, tokens: TokenData) -> DispatcherAction): ConditionalPipeline {
+    return ifTrue {
+      it.thenDoAction(action)
+    }
+  }
+
+  fun ifTrueThenSetState(action: (state: State) -> State): ConditionalPipeline {
+    return ifTrue {
+      it.thenSetState(action)
+    }
+  }
+
+  fun ifTrue(conditionCheck: (value: Any?) -> Boolean, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): ConditionalPipeline {
+    lateinit var stage: ConditionStage
+
+    val condition = { value: Any? ->
+      if (conditionCheck(value)) {
+        action(create(stage))
+      } else {
+        null
+      }
+    }
+
+    stage = ConditionStage(
+      conditions = lastStage.conditions + condition,
+      elseConditions = lastStage.elseConditions,
+      getAction = lastStage.getAction
+    )
+
+    return ConditionalPipeline(
+      stages = stages.replace(lastStage, stage),
+      lastStage = stage
+    )
+  }
+
+  fun ifFalse(conditionCheck: (value: Any?) -> Boolean, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): ConditionalPipeline {
+    lateinit var stage: ConditionStage
+
+    val condition = { value: Any? ->
+      if (!conditionCheck(value)) {
+        action(create(stage))
+      } else {
+        null
+      }
+    }
+
+    stage = ConditionStage(
+      conditions = lastStage.conditions + condition,
+      elseConditions = lastStage.elseConditions,
+      getAction = lastStage.getAction
+    )
+
+    return ConditionalPipeline(
+      stages = stages.replace(lastStage, stage),
+      lastStage = stage
+    )
+  }
+
+  fun ifTrue(action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): ConditionalPipeline {
+    return ifEquals(true, action)
+  }
+
+  fun ifFalse(action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): ConditionalPipeline {
+    return ifEquals(false, action)
+  }
+
+  fun ifFalseThenDo(conditionCheck: (value: Any?) -> Boolean, action: (state: State, tokens: TokenData) -> Unit): ConditionalPipeline {
+    return ifFalse(conditionCheck) {
+      it.thenDo { state, tokens, _ -> action(state, tokens) }
+    }
+  }
+
+  fun ifFalseThenDo(action: (state: State, tokens: TokenData) -> Unit): ConditionalPipeline {
+    return ifFalse {
+      it.thenDo { state, tokens, _ -> action(state, tokens) }
+    }
+  }
+
+  fun ifFalseThenDoAction(action: (state: State, tokens: TokenData) -> DispatcherAction): ConditionalPipeline {
+    return ifFalse {
+      it.thenDoAction(action)
+    }
+  }
+
+  fun ifFalseThenSetState(action: (state: State) -> State): ConditionalPipeline {
+    return ifFalse {
+      it.thenSetState(action)
+    }
+  }
+
+  fun orElseExit(): ConditionalPipeline {
+    return orElse {
+      create(lastStage)
+        .thenDo { state, _, _ ->
+          StageResponse(
+            state = state,
+            success = false
+          )
+        }
+    }
+  }
+
+  fun orElseThenDo(action: (state: State, tokens: TokenData) -> Unit): ConditionalPipeline {
+    return orElse { create(lastStage).thenDo { state, tokens, _ -> action(state, tokens) } }
+  }
+
+  fun orElse(action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): ConditionalPipeline {
+    lateinit var stage: ConditionStage
+
+    val condition = {
+      action(create(stage))
+    }
+
+    stage = ConditionStage(
+      conditions = lastStage.conditions,
+      elseConditions = lastStage.elseConditions + condition,
+      getAction = lastStage.getAction
+    )
+
+    return ConditionalPipeline(
+      stages = stages.replace(lastStage, stage),
+      lastStage = stage
+    )
   }
 }
 
 abstract class BaseStage<RESPONSE_TYPE : BaseStageResponse>(
   open var errorMessage: String? = null,
-  open val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> RESPONSE_TYPE
+  open val action: (dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> RESPONSE_TYPE
 ) {
-  private val beforeActions = mutableListOf<() -> Unit>()
-  private val afterActions = mutableListOf<(state: State, tokens: TokenData, response: RESPONSE_TYPE) -> Unit>()
-  private val afterSuccessActions = mutableListOf<(state: State, tokens: TokenData, response: RESPONSE_TYPE) -> Unit>()
-
-  open fun before(action: () -> Unit): BaseStage<RESPONSE_TYPE> {
-    beforeActions.add(action)
-
-    return this
-  }
-
-  open fun after(action: (state: State, tokens: TokenData, response: RESPONSE_TYPE) -> Unit): BaseStage<RESPONSE_TYPE> {
-    afterActions.add(action)
-
-    return this
-  }
-
-  open fun afterSuccess(action: (state: State, tokens: TokenData, response: RESPONSE_TYPE) -> Unit): BaseStage<RESPONSE_TYPE> {
-    afterSuccessActions.add(action)
-
-    return this
-  }
-
-  fun run(dispatcher: Dispatcher, state: State, tokens: TokenData): RESPONSE_TYPE {
-    beforeActions.forEach { it() }
-
-    val response = action(dispatcher, state, tokens)
-
-    afterActions.forEach { it(state, tokens, response) }
-
-    if (response.success) {
-      afterSuccessActions.forEach { it(state, tokens, response) }
-    }
-
-    return response
+  fun run(dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData): RESPONSE_TYPE {
+    return action(dispatcher, lastResponse, state, tokens)
   }
 }
 
 data class Stage(
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> StageResponse
+  override val action: (dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> StageResponse
 ) : BaseStage<StageResponse>(errorMessage, action)
+
+data class PassthroughStage<RESPONSE_TYPE: BaseStageResponse>(
+  override var errorMessage: String? = null,
+  override val action: (dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> RESPONSE_TYPE = { _, lastResponse, state, tokens ->
+    getAction(lastResponse, state, tokens)
+  },
+  val getAction: (lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> RESPONSE_TYPE
+) : BaseStage<RESPONSE_TYPE>(errorMessage, action)
 
 data class ReducerStage(
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> StageResponse = { dispatcher, state, tokens ->
-    getAction(state, tokens).fold(StageResponse(state)) { acc, stage ->
-      val response = stage.action(dispatcher, acc.state, tokens)
+  override val action: (dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> BaseStageResponse = { dispatcher, lastResponse, state, tokens ->
+    getAction(state, tokens).fold(lastResponse) { acc, stage ->
+      val response = stage.action(dispatcher, acc, acc.state, tokens)
 
-      acc.copy(
+      StageResponse(
         state = response.state,
         success = acc.success && response.success
       )
     }
   },
   val getAction: (state: State, tokens: TokenData) -> List<BaseStage<*>>
-) : BaseStage<StageResponse>(errorMessage, action)
+) : BaseStage<BaseStageResponse>(errorMessage, action)
 
 data class ConditionStage(
   val conditions: List<(value: Any?) -> Pipeline<*, *>?> = emptyList(),
   val elseConditions: List<() -> Pipeline<*, *>> = emptyList(),
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> StageResponse = { dispatcher, state, tokens ->
+  override val action: (dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> StageResponse = { dispatcher, _, state, tokens ->
     val value = getAction(state, tokens)
 
     var pipelines = conditions.mapNotNull { it(value) }
@@ -377,7 +370,7 @@ data class ConditionStage(
     }
 
     StageResponse(
-      state = pipelines.fold(state) { acc, pipeline -> pipeline.run(dispatcher, acc, tokens) },
+      state = pipelines.fold(state) { acc, pipeline -> pipeline.run(dispatcher, acc, tokens, false) },
       success = true
     )
   },
@@ -386,7 +379,7 @@ data class ConditionStage(
 
 data class ExpectTokenStage(
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> ExpectTokenStageResponse = { _, state, tokens ->
+  override val action: (dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> ExpectTokenStageResponse = { _, _, state, tokens ->
     val token = getAction(tokens)
 
     ExpectTokenStageResponse(
@@ -401,7 +394,7 @@ data class ExpectTokenStage(
 data class ExpectTokenCountStage(
   val count: Int,
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> ExpectTokenCountStageResponse = { _, state, (tokens) ->
+  override val action: (dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> ExpectTokenCountStageResponse = { _, _, state, (tokens) ->
     val actual = tokens.unconsumed.size
 
     ExpectTokenCountStageResponse(
@@ -416,7 +409,7 @@ data class ExpectTokenCountStage(
 data class ListStage<T>(
   val items: List<T>,
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> StageResponse = { _, state, tokens ->
+  override val action: (dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> StageResponse = { _, _, state, tokens ->
     items.fold(StageResponse(state)) { acc, item ->
       val response = getAction(item, state, tokens)
 
@@ -431,7 +424,7 @@ data class ListStage<T>(
 
 data class ActionStage(
   override var errorMessage: String? = null,
-  override val action: (dispatcher: Dispatcher, state: State, tokens: TokenData) -> StageResponse = { dispatcher, state, tokens ->
+  override val action: (dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> StageResponse = { dispatcher, _, state, tokens ->
     StageResponse(
       dispatcher.dispatchAndExecute(
         state = state,
