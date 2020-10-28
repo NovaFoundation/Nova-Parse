@@ -2,6 +2,7 @@ package com.novalang.parser.ast
 
 import com.novalang.ast.ElseStatement
 import com.novalang.parser.Dispatcher
+import com.novalang.parser.Pipeline
 import com.novalang.parser.State
 import com.novalang.parser.TokenType
 import com.novalang.parser.actions.AddElseStatementAction
@@ -13,50 +14,52 @@ import com.novalang.parser.actions.ScopeParseAction
 class ElseStatementParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
-      is ScopeParseAction -> parseElseStatement(state, action)
-      is AddElseStatementIfStatementAction -> addElseStatementValue(state, action)
+      is ScopeParseAction -> parseElseStatement().run(dispatcher, state, action.tokenData)
+      is AddElseStatementIfStatementAction -> addElseStatementValue(action).run(dispatcher, state, action.tokenData)
       else -> state
     }
   }
 
-  private fun addElseStatementValue(state: State, action: AddElseStatementIfStatementAction): State {
-    return dispatcher.dispatchAndExecute(
-      state.copy(
-        currentElseStatement = null
-      ),
-      AddElseStatementAction(
-        file = state.currentFile!!,
-        clazz = state.currentClass!!,
-        elseStatement = state.currentElseStatement!!.copy(ifStatement = action.ifStatement)
-      )
-    )
+  private fun addElseStatementValue(action: AddElseStatementIfStatementAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenDoAction { state, _ ->
+        AddElseStatementAction(
+          file = state.currentFile!!,
+          clazz = state.currentClass!!,
+          elseStatement = state.currentElseStatement!!.copy(ifStatement = action.ifStatement)
+        )
+      }
+
+      .thenSetState { state -> state.copy(currentElseStatement = null) }
   }
 
-  private fun parseElseStatement(state: State, action: ScopeParseAction): State {
-    val tokens = action.tokenData.tokens
+  private fun parseElseStatement(): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.ELSE) }
 
-    tokens.consumeFirstIfType(TokenType.ELSE) ?: return state
+      .thenExpectToken { (tokens) -> tokens.consumeLastIfType(TokenType.OPENING_BRACE) }
+      .orElseError("Else statement missing opening brace")
 
-    if (tokens.isConsumed() || tokens.unconsumed.last().type != TokenType.OPENING_BRACE) {
-      return error(state, action.tokenData, "Else statement missing opening brace")
-    } else if (tokens.isConsumed()) {
-      val elseStatement = ElseStatement()
+      .thenCheck { _, (tokens) -> tokens.isConsumed() }
 
-      return dispatcher.dispatchAndExecute(
-        state = state,
-        action = AddElseStatementAction(
+      .ifTrueThenDoAction { state, _ ->
+        val elseStatement = ElseStatement()
+
+        AddElseStatementAction(
           file = state.currentFile!!,
           clazz = state.currentClass!!,
           elseStatement = elseStatement
         )
-      )
-    }
+      }
 
-    val elseStatement = ElseStatement()
+      .ifFalse {
+        it.thenSetState { state ->
+          val elseStatement = ElseStatement()
 
-    return dispatcher.dispatchAndExecute(
-      state = state.copy(currentElseStatement = elseStatement),
-      action = ElseStatementIfStatementParseAction(tokenData = action.tokenData)
-    )
+          state.copy(currentElseStatement = elseStatement)
+        }
+
+          .thenDoAction { _, tokens -> ElseStatementIfStatementParseAction(tokenData = tokens) }
+      }
   }
 }

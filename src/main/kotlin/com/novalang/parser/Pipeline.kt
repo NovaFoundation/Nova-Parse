@@ -168,12 +168,63 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
     )
   }
 
+  fun ifFalse(conditionCheck: (value: Any?) -> Boolean, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
+    if (lastStage !is ConditionStage) {
+      throw RuntimeException("Must be in a conditional to check ifFalse")
+    }
+
+    val conditionStage = lastStage as ConditionStage
+
+    val condition = { value: Any? ->
+      if (!conditionCheck(value)) {
+        action(create())
+      } else {
+        null
+      }
+    }
+
+    val stage = ConditionStage(
+      conditions = conditionStage.conditions + condition,
+      elseConditions = conditionStage.elseConditions,
+      getAction = conditionStage.getAction
+    )
+
+    return Pipeline(
+      stages = stages.replace(lastStage, stage),
+      lastStage = stage
+    )
+  }
+
   fun ifTrue(action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
     return ifEquals(true, action)
   }
 
   fun ifFalse(action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
     return ifEquals(false, action)
+  }
+
+  fun ifFalseThenDo(conditionCheck: (value: Any?) -> Boolean, action: (state: State, tokens: TokenData) -> Unit): Pipeline<ConditionStage, StageResponse> {
+    return ifFalse(conditionCheck) {
+      it.thenDo { state, tokens, _ -> action(state, tokens) }
+    }
+  }
+
+  fun ifFalseThenDo(action: (state: State, tokens: TokenData) -> Unit): Pipeline<ConditionStage, StageResponse> {
+    return ifFalse {
+      it.thenDo { state, tokens, _ -> action(state, tokens) }
+    }
+  }
+
+  fun ifFalseThenDoAction(action: (state: State, tokens: TokenData) -> DispatcherAction): Pipeline<ConditionStage, StageResponse> {
+    return ifFalse {
+      it.thenDoAction(action)
+    }
+  }
+
+  fun ifFalseThenSetState(action: (state: State) -> State): Pipeline<ConditionStage, StageResponse> {
+    return ifFalse {
+      it.thenSetState(action)
+    }
   }
 
   fun orElseExit(): Pipeline<ConditionStage, StageResponse> {
