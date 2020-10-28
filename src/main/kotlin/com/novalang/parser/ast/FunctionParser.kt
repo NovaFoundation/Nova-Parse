@@ -22,40 +22,35 @@ import com.novalang.parser.actions.StartScopeAction
 class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
-      is ClassParseAction -> parseFunction(state, action.tokenData)
+      is ClassParseAction -> parseFunction().run(dispatcher, state, action.tokenData)
       is AddParameterAction -> addParameter(action).run(dispatcher, state, action.tokenData)
-      is ReplaceScopeAction -> replaceScope(state, action)
-      is EndScopeAction -> endScope(state, action)
+      is ReplaceScopeAction -> replaceScope(action).run(dispatcher, state, action.tokenData)
+      is EndScopeAction -> endScope(action).run(dispatcher, state, action.tokenData)
       else -> state
     }
   }
 
-  private fun endScope(state: State, action: EndScopeAction): State {
-    if (state.currentFunction?.scope == action.scope) {
-      return state.copy(
-        currentFunction = null
-      )
-    }
+  private fun endScope(action: EndScopeAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenCheck { state, _ -> state.currentFunction?.scope == action.scope }
 
-    return state
+      .ifTrueThenSetState { state -> state.copy(currentFunction = null) }
   }
 
-  private fun replaceScope(state: State, action: ReplaceScopeAction): State {
-    if (state.currentFunction?.scope == action.oldScope) {
-      val newFunction = state.currentFunction.copy(
-        scope = action.newScope
-      )
+  private fun replaceScope(action: ReplaceScopeAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenCheck { state, _ -> state.currentFunction?.scope == action.oldScope }
 
-      return dispatcher.dispatchAndExecute(
-        state,
+      .ifTrueThenDoAction { state, _ ->
+        val newFunction = state.currentFunction!!.copy(
+          scope = action.newScope
+        )
+
         ReplaceFunctionAction(
           oldFunction = state.currentFunction,
           newFunction = newFunction
         )
-      )
-    }
-
-    return state
+      }
   }
 
   private fun addParameter(action: AddParameterAction): Pipeline<*, *> {
@@ -72,7 +67,7 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       }
   }
 
-  private fun parseFunction(initialState: State, tokenData: TokenData): State {
+  private fun parseFunction(): Pipeline<*, *> {
     lateinit var nameToken: Token
 
     return Pipeline.create()
@@ -107,7 +102,7 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         parameterTokens
           .filter { it.isNotEmpty() }
           .map {
-            ActionStage { state, _ ->
+            ActionStage { state, tokenData ->
               val parameterTokenData = TokenData(
                 tokens = TokenList(it),
                 source = tokenData.source
@@ -122,7 +117,5 @@ class FunctionParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       }
 
       .thenDoAction { _, tokens -> StartScopeAction(tokens) }
-
-      .run(dispatcher, initialState, tokenData)
   }
 }

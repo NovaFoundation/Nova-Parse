@@ -123,6 +123,24 @@ class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseStageR
     }
   }
 
+  fun ifTrueThenDo(action: (state: State, tokens: TokenData) -> Unit): Pipeline<ConditionStage, StageResponse> {
+    return ifTrue {
+      it.thenDo { state, tokens, _ -> action(state, tokens) }
+    }
+  }
+
+  fun ifTrueThenDoAction(action: (state: State, tokens: TokenData) -> DispatcherAction): Pipeline<ConditionStage, StageResponse> {
+    return ifTrue {
+      it.thenDoAction(action)
+    }
+  }
+
+  fun ifTrueThenSetState(action: (state: State) -> State): Pipeline<ConditionStage, StageResponse> {
+    return ifTrue {
+      it.thenSetState(action)
+    }
+  }
+
   fun ifTrue(conditionCheck: (value: Any?) -> Boolean, action: (pipeline: Pipeline<*, *>) -> Pipeline<*, *>): Pipeline<ConditionStage, StageResponse> {
     if (lastStage !is ConditionStage) {
       throw RuntimeException("Must be in a conditional to check ifTrue")
