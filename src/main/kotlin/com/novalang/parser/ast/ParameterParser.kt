@@ -36,7 +36,7 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
 
       .thenCheck { _, (tokens) -> tokens.isConsumed() }
 
-      .ifTrue {
+      .ifTrue { it, _ ->
         it.thenDoAction { _, _ ->
           AddParameterAction(
             parameter = Parameter(
@@ -48,7 +48,7 @@ class ParameterParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         }
       }
 
-      .ifFalse {
+      .ifFalse { it, _ ->
         it.thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.COLON) }
           .orElseError("Invalid parameter type declaration")
 

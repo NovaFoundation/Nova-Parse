@@ -52,7 +52,7 @@ class ElseStatementParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         )
       }
 
-      .ifFalse {
+      .ifFalse { it, _ ->
         it.thenSetState { state ->
           val elseStatement = ElseStatement()
 

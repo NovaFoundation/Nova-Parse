@@ -36,7 +36,7 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
 
       .thenCheck { _, (tokens) -> tokens.isConsumed() }
 
-      .ifTrue {
+      .ifTrue { it, _ ->
         it.thenDoAction { _, _ ->
           AddFieldAction(
             Field(
@@ -48,7 +48,7 @@ class FieldParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
         }
       }
 
-      .ifFalse {
+      .ifFalse { it, _ ->
         it.thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.COLON) }
           .orElseError("Invalid field type declaration")
 
