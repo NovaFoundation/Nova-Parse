@@ -3,6 +3,7 @@ package com.novalang.parser.ast
 import com.novalang.ast.IfStatement
 import com.novalang.ast.Literal
 import com.novalang.parser.Dispatcher
+import com.novalang.parser.Pipeline
 import com.novalang.parser.State
 import com.novalang.parser.TokenData
 import com.novalang.parser.TokenType
@@ -20,101 +21,102 @@ import com.novalang.parser.actions.ScopeParseAction
 class IfStatementParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
-      is ScopeParseAction -> parseIfStatement(state, action.tokenData)
-      is ReplaceScopeAction -> replaceScope(state, action)
-      is ElseStatementIfStatementParseAction -> parseIfStatementForElseStatement(state, action)
-      is AddIfStatementValueAction -> addIfStatementValue(state, action)
-      is AddIfStatementAction -> addIfStatement(state, action)
-      is EndScopeAction -> endScope(state, action)
+      is ScopeParseAction -> parseIfStatement(action.tokenData).run(dispatcher, state, action.tokenData)
+      is ReplaceScopeAction -> replaceScope(action).run(dispatcher, state, action.tokenData)
+      is ElseStatementIfStatementParseAction -> parseIfStatementForElseStatement(action).run(dispatcher, state, action.tokenData)
+      is AddIfStatementValueAction -> addIfStatementValue(action).run(dispatcher, state, action.tokenData)
+      is AddIfStatementAction -> addIfStatement(action).run(dispatcher, state, action.tokenData)
+      is EndScopeAction -> endScope(action).run(dispatcher, state, action.tokenData)
       else -> state
     }
   }
 
-  private fun endScope(state: State, action: EndScopeAction): State {
-    if (state.currentIfStatement?.scope == action.scope) {
-      val newIfStatements = state.ifStatements - state.currentIfStatement
+  private fun endScope(action: EndScopeAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenCheck { state, _ -> state.currentIfStatement?.scope }
+      .ifEquals(action.scope) { it, _ ->
+        it.thenSetState { state ->
+          val newIfStatements = state.ifStatements - state.currentIfStatement!!
 
-      return state.copy(
-        currentIfStatement = newIfStatements.lastOrNull(),
-        ifStatements = newIfStatements
-      )
-    }
-
-    return state
+          state.copy(
+            currentIfStatement = newIfStatements.lastOrNull(),
+            ifStatements = newIfStatements
+          )
+        }
+      }
   }
 
-  private fun addIfStatement(state: State, action: AddIfStatementAction): State {
-    return state.copy(
-      currentIfStatement = action.ifStatement,
-      ifStatements = state.ifStatements + action.ifStatement
-    )
-  }
-
-  private fun replaceScope(state: State, action: ReplaceScopeAction): State {
-    val ifStatement = state.ifStatements.find { it.scope == action.oldScope }
-
-    if (ifStatement != null) {
-      return dispatcher.dispatchAndExecute(
-        state = state,
-        action = ReplaceStatementAction(
-          oldStatement = ifStatement,
-          newStatement = ifStatement.copy(scope = action.newScope)
-        )
-      )
-    }
-
-    return state
-  }
-
-  private fun parseIfStatementForElseStatement(state: State, action: ElseStatementIfStatementParseAction): State {
-    return parseIfStatement(state, action.tokenData)
-  }
-
-  private fun addIfStatementValue(state: State, action: AddIfStatementValueAction): State {
-    return if (state.currentElseStatement != null) {
-      dispatcher.dispatchAndExecute(
-        state,
-        AddElseStatementIfStatementAction(
-          file = state.currentFile!!,
-          clazz = state.currentClass!!,
-          ifStatement = state.currentIfStatement!!.copy(expression = action.value)
-        )
-      )
-    } else {
-      dispatcher.dispatchAndExecute(
+  private fun addIfStatement(action: AddIfStatementAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenSetState { state ->
         state.copy(
-          currentIfStatement = null
-        ),
-        AddIfStatementAction(
-          file = state.currentFile!!,
-          clazz = state.currentClass!!,
-          ifStatement = state.currentIfStatement!!.copy(expression = action.value)
+          currentIfStatement = action.ifStatement,
+          ifStatements = state.ifStatements + action.ifStatement
         )
-      )
-    }
+      }
   }
 
-  private fun parseIfStatement(state: State, tokenData: TokenData): State {
-    val tokens = tokenData.tokens
+  private fun replaceScope(action: ReplaceScopeAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenCheck { state, _ -> state.ifStatements.find { it.scope == action.oldScope } }
+      .ifNotEquals(null) { it, response ->
+        val ifStatement = response.value as IfStatement
 
-    tokens.consumeFirstIfType(TokenType.IF) ?: return state
-    tokens.consumeFirstIfType(TokenType.OPENING_PAREN) ?: return error(state, tokenData, "If statement missing opening parenthesis")
-    tokens.consumeLastIfType(TokenType.OPENING_BRACE) ?: return error(state, tokenData, "If statement missing opening brace")
-    tokens.consumeLastIfType(TokenType.CLOSING_PAREN) ?: return error(state, tokenData, "If statement missing closing parenthesis")
+        it.thenDoAction { _, _ ->
+            ReplaceStatementAction(
+              oldStatement = ifStatement,
+              newStatement = ifStatement.copy(scope = action.newScope)
+            )
+          }
+      }
+  }
 
-    if (tokens.isConsumed()) {
-      tokens.unconsumeLast() // still allow parsing the scope as a scope block
+  private fun parseIfStatementForElseStatement(action: ElseStatementIfStatementParseAction): Pipeline<*, *> {
+    return parseIfStatement(action.tokenData)
+  }
 
-      return error(state, tokenData, "If statement missing expression")
-    }
+  private fun addIfStatementValue(action: AddIfStatementValueAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenCheck { state, _ -> state.currentElseStatement }
+      .ifNotEquals(null) { it, _ ->
+        it.thenDoAction { state, _ ->
+          AddElseStatementIfStatementAction(
+            file = state.currentFile!!,
+            clazz = state.currentClass!!,
+            ifStatement = state.currentIfStatement!!.copy(expression = action.value)
+          )
+        }
+      }
+      .ifEquals(null) { it, _ ->
+        it.thenSetState { it.copy(currentIfStatement = null) }
+          .thenDoAction { state, _ ->
+            AddIfStatementAction(
+              file = state.currentFile!!,
+              clazz = state.currentClass!!,
+              ifStatement = state.currentIfStatement!!.copy(expression = action.value)
+            )
+          }
+      }
+  }
 
-    val ifStatement = IfStatement(
-      expression = Literal.NULL
-    )
+  private fun parseIfStatement(tokenData: TokenData): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.IF) }
 
-    return dispatcher.dispatchAndExecute(
-      state = state.copy(currentIfStatement = ifStatement),
-      action = IfStatementValueParseAction(tokenData = tokenData)
-    )
+      .thenExpectToken { (tokens) -> tokens.consumeFirstIfType(TokenType.OPENING_PAREN) }
+      .orElseError("If statement missing opening parenthesis")
+
+      .thenExpectToken { (tokens) -> tokens.consumeLastIfType(TokenType.OPENING_BRACE) }
+      .orElseError("If statement missing opening brace")
+
+      .thenExpectToken { (tokens) -> tokens.consumeLastIfType(TokenType.CLOSING_PAREN) }
+      .orElseError("If statement missing closing parenthesis")
+
+      .thenCheck { _, tokens -> tokens.isConsumed() }
+      .ifTrueThenError("If statement missing expression")
+
+      .thenSetState { it.copy(currentIfStatement = IfStatement(expression = Literal.NULL)) }
+
+      .thenDoAction { _, _ -> IfStatementValueParseAction(tokenData = tokenData) }
   }
 }
