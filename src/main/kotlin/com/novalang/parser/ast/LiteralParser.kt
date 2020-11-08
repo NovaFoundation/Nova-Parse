@@ -3,6 +3,7 @@ package com.novalang.parser.ast
 import com.novalang.ast.Literal
 import com.novalang.ast.LiteralType
 import com.novalang.parser.Dispatcher
+import com.novalang.parser.Pipeline
 import com.novalang.parser.State
 import com.novalang.parser.TokenData
 import com.novalang.parser.TokenType
@@ -20,44 +21,42 @@ private const val BOOLEAN_FALSE_VALUE = "false"
 class LiteralParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
-      is AssignmentValueParseAction -> parseLiteralForAssignment(state, action)
-      is IfStatementValueParseAction -> parseLiteralForIfStatement(state, action)
+      is AssignmentValueParseAction -> parseLiteralForAssignment(state, action).run(dispatcher, state, action.tokenData)
+      is IfStatementValueParseAction -> parseLiteralForIfStatement(state, action).run(dispatcher, state, action.tokenData)
       else -> state
     }
   }
 
-  private fun parseLiteralForAssignment(state: State, action: AssignmentValueParseAction): State {
+  private fun parseLiteralForAssignment(state: State, action: AssignmentValueParseAction): Pipeline<*, *> {
     val literal = parseLiteral(action.tokenData)
 
-    if (literal != null) {
-      return dispatcher.dispatchAndExecute(
-        state,
-        AddAssignmentValueAction(
-          file = state.currentFile!!,
-          clazz = state.currentClass!!,
-          value = literal
-        )
-      )
-    }
-
-    return state
+    return Pipeline.create()
+      .thenCheck { _, _ -> literal }
+      .ifNotEquals(null) { it, _ ->
+        it.thenDoAction { _, _ ->
+          AddAssignmentValueAction(
+            file = state.currentFile!!,
+            clazz = state.currentClass!!,
+            value = literal!!
+          )
+        }
+      }
   }
 
-  private fun parseLiteralForIfStatement(state: State, action: IfStatementValueParseAction): State {
+  private fun parseLiteralForIfStatement(state: State, action: IfStatementValueParseAction): Pipeline<*, *> {
     val literal = parseLiteral(action.tokenData)
 
-    if (literal != null) {
-      return dispatcher.dispatchAndExecute(
-        state,
-        AddIfStatementValueAction(
-          file = state.currentFile!!,
-          clazz = state.currentClass!!,
-          value = literal
-        )
-      )
-    }
-
-    return state
+    return Pipeline.create()
+      .thenCheck { _, _ -> literal }
+      .ifNotEquals(null) { it, _ ->
+        it.thenDoAction { _, _ ->
+          AddIfStatementValueAction(
+            file = state.currentFile!!,
+            clazz = state.currentClass!!,
+            value = literal!!
+          )
+        }
+      }
   }
 
   private fun parseLiteral(tokenData: TokenData): Literal? {
