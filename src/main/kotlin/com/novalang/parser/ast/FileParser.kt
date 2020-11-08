@@ -16,10 +16,10 @@ class FileParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
       is InitFileAction -> initFile(action).run(dispatcher, state, action.tokenData)
-      is EndFileAction -> finishFile(state)
-      is ReplaceClassAction -> replaceClass(state, action)
-      is ReplaceFileAction -> replaceFile(state, action)
-      is AddClassAction -> addClass(state, action)
+      is EndFileAction -> finishFile().run(dispatcher, state, action.tokenData)
+      is ReplaceClassAction -> replaceClass(action).run(dispatcher, state, action.tokenData)
+      is ReplaceFileAction -> replaceFile(action).run(dispatcher, state, action.tokenData)
+      is AddClassAction -> addClass(action).run(dispatcher, state, action.tokenData)
       else -> state
     }
   }
@@ -44,57 +44,52 @@ class FileParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
       }
   }
 
-  private fun finishFile(state: State): State {
-    return state.copy(
-      currentClass = null,
-      currentFile = null
-    )
+  private fun finishFile(): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenSetState {
+        it.copy(
+          currentClass = null,
+          currentFile = null
+        )
+      }
   }
 
-  private fun replaceClass(initialState: State, action: ReplaceClassAction): State {
-    var state = initialState
+  private fun replaceClass(action: ReplaceClassAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenSetState { it.copy(currentClass = action.newClass) }
+      .thenDoAction { state, _ ->
+        val newFile = state.currentFile!!.copy(
+          classes = state.currentFile.classes.replace(action.oldClass, action.newClass)
+        )
 
-    val newFile = state.currentFile!!.copy(
-      classes = state.currentFile!!.classes.replace(action.oldClass, action.newClass)
-    )
-
-    state = dispatcher.dispatchAndExecute(
-      state,
-      ReplaceFileAction(
-        oldFile = state.currentFile!!,
-        newFile = newFile
-      )
-    )
-
-    return state.copy(
-      currentClass = action.newClass
-    )
+        ReplaceFileAction(
+          oldFile = state.currentFile,
+          newFile = newFile
+        )
+      }
   }
 
-  private fun addClass(state: State, action: AddClassAction): State {
-    val newFile = action.file.copy(
-      classes = action.file.classes + action.newClass
-    )
+  private fun addClass(action: AddClassAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenDoAction { _, _ ->
+        val newFile = action.file.copy(
+          classes = action.file.classes + action.newClass
+        )
 
-    return dispatcher.dispatchAndExecute(
-      state,
-      ReplaceFileAction(
-        oldFile = action.file,
-        newFile = newFile
-      )
-    )
+        ReplaceFileAction(
+          oldFile = action.file,
+          newFile = newFile
+        )
+      }
   }
 
-  private fun replaceFile(state: State, action: ReplaceFileAction): State {
-    val currentFile = if (action.oldFile == state.currentFile) {
-      action.newFile
-    } else {
-      state.currentFile
-    }
-
-    return state.copy(
-      currentFile = currentFile,
-      files = state.files.replace(action.oldFile, action.newFile)
-    )
+  private fun replaceFile(action: ReplaceFileAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenSetState { state ->
+        state.copy(
+          currentFile = action.newFile,
+          files = state.files.replace(action.oldFile, action.newFile)
+        )
+      }
   }
 }
