@@ -74,8 +74,14 @@ open class Pipeline<STAGE_TYPE : BaseStage<RESPONSE_TYPE>, RESPONSE_TYPE : BaseS
   }
 
   fun orElseError(action: (state: State, tokens: TokenData, response: RESPONSE_TYPE) -> String): Pipeline<STAGE_TYPE, RESPONSE_TYPE> {
-    val stage = PassthroughStage { lastResponse, state, tokens ->
+    lateinit var stage: PassthroughStage<RESPONSE_TYPE>
+
+    stage = PassthroughStage { lastResponse, state, tokens ->
       lastStage.errorMessage = action(state, tokens, lastResponse as RESPONSE_TYPE)
+      // lastResponse.success = lastResponse.success// && lastStage.errorMessage == null
+      // lastResponse.success = lastStage.errorMessage == null
+
+      stage.errorMessage = lastStage.errorMessage
 
       lastResponse
     }
@@ -202,6 +208,18 @@ class ConditionalPipeline(
   fun ifTrueThenSetState(action: (state: State) -> State): ConditionalPipeline {
     return ifTrue {
       it.thenSetState(action)
+    }
+  }
+
+  fun ifTrueThenError(action: (state: State, tokens: TokenData, response: BaseStageResponse) -> String): ConditionalPipeline {
+    return ifTrue {
+      it.orElseError(action)
+    }
+  }
+
+  fun ifTrueThenError(errorMessage: String): ConditionalPipeline {
+    return ifTrue {
+      it.orElseError(errorMessage)
     }
   }
 
@@ -333,7 +351,7 @@ data class Stage(
   override val action: (dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> StageResponse
 ) : BaseStage<StageResponse>(errorMessage, action)
 
-data class PassthroughStage<RESPONSE_TYPE: BaseStageResponse>(
+data class PassthroughStage<RESPONSE_TYPE : BaseStageResponse>(
   override var errorMessage: String? = null,
   override val action: (dispatcher: Dispatcher, lastResponse: BaseStageResponse, state: State, tokens: TokenData) -> RESPONSE_TYPE = { _, lastResponse, state, tokens ->
     getAction(lastResponse, state, tokens)
@@ -440,13 +458,13 @@ data class ActionStage(
 
 abstract class BaseStageResponse(
   open val state: State,
-  open val success: Boolean = true
+  open var success: Boolean = true
 ) {
 }
 
 data class StageResponse(
   override val state: State,
-  override val success: Boolean = true
+  override var success: Boolean = true
 ) : BaseStageResponse(
   state,
   success
@@ -455,7 +473,7 @@ data class StageResponse(
 data class ExpectTokenStageResponse(
   val token: Token?,
   override val state: State,
-  override val success: Boolean = true
+  override var success: Boolean = true
 ) : BaseStageResponse(
   state,
   success
@@ -465,7 +483,7 @@ data class ExpectTokenCountStageResponse(
   val expected: Int,
   val actual: Int,
   override val state: State,
-  override val success: Boolean = true
+  override var success: Boolean = true
 ) : BaseStageResponse(
   state,
   success

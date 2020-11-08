@@ -1,8 +1,8 @@
 package com.novalang.parser.ast
 
-import com.novalang.CompileError
 import com.novalang.ast.File
 import com.novalang.parser.Dispatcher
+import com.novalang.parser.Pipeline
 import com.novalang.parser.State
 import com.novalang.parser.actions.AddClassAction
 import com.novalang.parser.actions.DispatcherAction
@@ -11,12 +11,11 @@ import com.novalang.parser.actions.InitFileAction
 import com.novalang.parser.actions.ReplaceClassAction
 import com.novalang.parser.actions.ReplaceFileAction
 import com.novalang.replace
-import java.io.File as JavaFile
 
 class FileParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
   override fun reduce(state: State, action: DispatcherAction): State {
     return when (action) {
-      is InitFileAction -> initFile(state, action.file)
+      is InitFileAction -> initFile(action).run(dispatcher, state, action.tokenData)
       is EndFileAction -> finishFile(state)
       is ReplaceClassAction -> replaceClass(state, action)
       is ReplaceFileAction -> replaceFile(state, action)
@@ -25,28 +24,24 @@ class FileParser(dispatcher: Dispatcher) : Reducer(dispatcher) {
     }
   }
 
-  private fun initFile(state: State, file: JavaFile): State {
-    if (file.isDirectory) {
-      return state.copy(
-        errors = state.errors + CompileError(
-          message = "Cannot parse a directory \"${file.canonicalPath}\""
-        )
-      )
-    }
-    if (!file.isFile) {
-      return state.copy(
-        errors = state.errors + CompileError(
-          message = "Invalid source file \"${file.canonicalPath}\""
-        )
-      )
-    }
+  private fun initFile(action: InitFileAction): Pipeline<*, *> {
+    return Pipeline.create()
+      .thenCheck { _, _ -> action.file.isDirectory }
+      .ifTrueThenSetState { state -> state.copy(currentFile = null) }
+      .ifTrueThenError("Cannot parse a directory \"${action.file.canonicalPath}\"")
 
-    val fileNode = File(file)
+      .thenCheck { _, _ -> !action.file.isFile }
+      .ifTrueThenSetState { state -> state.copy(currentFile = null) }
+      .ifTrueThenError("Invalid source file \"${action.file.canonicalPath}\"")
 
-    return state.copy(
-      files = state.files + fileNode,
-      currentFile = fileNode
-    )
+      .thenSetState { state ->
+        val fileNode = File(action.file)
+
+        state.copy(
+          files = state.files + fileNode,
+          currentFile = fileNode
+        )
+      }
   }
 
   private fun finishFile(state: State): State {
